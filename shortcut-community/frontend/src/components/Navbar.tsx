@@ -35,6 +35,14 @@ export default function Navbar() {
         <div className="flex items-center gap-3 shrink-0">
           {user ? (
             <>
+              {user.role === 'admin' && (
+                <Link
+                  to="/admin"
+                  className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                >
+                  管理
+                </Link>
+              )}
               <Link
                 to="/share"
                 className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700"

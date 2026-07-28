@@ -40,7 +40,7 @@ export const api = {
     }),
   getMe: () => request('/users/me'),
   getUser: (id: number) => request(`/users/${id}`),
-  updateProfile: (body: { bio?: string; username?: string }) =>
+  updateProfile: (body: { bio?: string; username?: string; email?: string }) =>
     request('/users/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -67,12 +67,14 @@ export const api = {
     search?: string;
     sort?: string;
     userId?: number;
+    includeRemoved?: boolean;
   }) => {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.search) query.set('search', params.search);
     if (params.sort) query.set('sort', params.sort);
     if (params.userId) query.set('userId', String(params.userId));
+    if (params.includeRemoved) query.set('includeRemoved', '1');
     return request(`/shortcuts?${query.toString()}`);
   },
   getShortcut: (id: number) => request(`/shortcuts/${id}`),
@@ -84,6 +86,10 @@ export const api = {
     }),
   deleteShortcut: (id: number) =>
     request(`/shortcuts/${id}`, { method: 'DELETE' }),
+  removeShortcut: (id: number) =>
+    request(`/shortcuts/${id}/remove`, { method: 'PUT' }),
+  restoreShortcut: (id: number) =>
+    request(`/shortcuts/${id}/restore`, { method: 'PUT' }),
   getDownloadUrl: (id: number) => `${API}/shortcuts/${id}/download`,
 
   // Likes & Comments
@@ -101,4 +107,21 @@ export const api = {
     request(`/shortcuts/${shortcutId}/comments/${commentId}`, {
       method: 'DELETE',
     }),
+
+  // Admin
+  adminGetUsers: (params: { page?: number }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    return request(`/admin/users?${query.toString()}`);
+  },
+  adminBanUser: (id: number) =>
+    request(`/admin/users/${id}/ban`, { method: 'PUT' }),
+  adminUnbanUser: (id: number) =>
+    request(`/admin/users/${id}/unban`, { method: 'PUT' }),
+  adminGetShortcuts: (params: { page?: number; status?: string }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.status) query.set('status', params.status);
+    return request(`/admin/shortcuts?${query.toString()}`);
+  },
 };

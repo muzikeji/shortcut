@@ -78,6 +78,18 @@ function initTables() {
   try {
     db.exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''`);
   } catch {}
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`);
+  } catch {}
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0`);
+  } catch {}
+
+  try {
+    db.exec(`ALTER TABLE shortcuts ADD COLUMN status TEXT DEFAULT 'active'`);
+  } catch {}
 }
 
 module.exports = { getDb };

@@ -7,6 +7,7 @@ import type { Shortcut } from './types';
 interface UserProfile {
   id: number;
   username: string;
+  email?: string;
   avatar: string;
   bio: string;
   created_at: string;
@@ -15,13 +16,14 @@ interface UserProfile {
 
 export default function UserProfile() {
   const { id } = useParams<{ id: string }>();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, updateUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [editing, setEditing] = useState(false);
   const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
   const [editAvatarPreview, setEditAvatarPreview] = useState('');
@@ -39,25 +41,30 @@ export default function UserProfile() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = currentUser && profile && currentUser.id === profile.id;
+  const isOwnProfile = currentUser && Number(id) === currentUser.id;
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     Promise.all([
       api.getUser(Number(id)),
-      api.getShortcuts({ userId: Number(id) }),
+      api.getShortcuts({ userId: Number(id), includeRemoved: isOwnProfile }),
     ])
       .then(([userData, shortcutData]) => {
+        if (isOwnProfile && currentUser) {
+          userData.user.email = currentUser.email || userData.user.email;
+        }
         setProfile(userData.user);
         setShortcuts(shortcutData.shortcuts);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, currentUser, isOwnProfile]);
 
   const startEditing = () => {
     if (!profile) return;
     setEditUsername(profile.username);
+    setEditEmail(profile.email || '');
     setEditBio(profile.bio || '');
     setEditAvatarFile(null);
     setEditAvatarPreview('');
@@ -88,22 +95,38 @@ export default function UserProfile() {
       setSaveError('用户名长度应为 2-20 个字符');
       return;
     }
+    if (editEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail)) {
+      setSaveError('邮箱格式不正确');
+      return;
+    }
 
     setSaveLoading(true);
     setSaveError('');
 
     try {
-      if (editUsername !== profile?.username || editBio !== (profile?.bio || '')) {
-        const data = await api.updateProfile({
-          username: editUsername !== profile?.username ? editUsername : undefined,
-          bio: editBio !== (profile?.bio || '') ? editBio : undefined,
+      const profileChanged =
+        editUsername !== profile?.username ||
+        editBio !== (profile?.bio || '') ||
+        editEmail !== (profile?.email || '');
+
+      if (profileChanged) {
+        const body: Record<string, string> = {};
+        if (editUsername !== profile?.username) body.username = editUsername;
+        if (editBio !== (profile?.bio || '')) body.bio = editBio;
+        if (editEmail !== (profile?.email || '')) body.email = editEmail;
+
+        const data = await api.updateProfile(body);
+        setProfile(prev => prev ? { ...prev, username: data.user.username, bio: data.user.bio, email: data.user.email } : null);
+        updateUser({
+          username: data.user.username,
+          email: data.user.email,
         });
-        setProfile(prev => prev ? { ...prev, username: data.user.username, bio: data.user.bio } : null);
       }
 
       if (editAvatarFile) {
         const data = await api.uploadAvatar(editAvatarFile);
         setProfile(prev => prev ? { ...prev, avatar: data.user.avatar } : null);
+        updateUser({ avatar: data.user.avatar });
       }
 
       setEditing(false);
@@ -178,6 +201,29 @@ export default function UserProfile() {
     }
   };
 
+  const handleRemoveShortcut = async (sid: number) => {
+    if (!confirm('确定要下架该分享吗？')) return;
+    try {
+      await api.removeShortcut(sid);
+      setShortcuts(prev =>
+        prev.map(s => (s.id === sid ? { ...s, status: 'removed' } : s))
+      );
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  const handleRestoreShortcut = async (sid: number) => {
+    try {
+      await api.restoreShortcut(sid);
+      setShortcuts(prev =>
+        prev.map(s => (s.id === sid ? { ...s, status: 'active' } : s))
+      );
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
@@ -229,6 +275,15 @@ export default function UserProfile() {
                   />
                 </div>
                 <div>
+                  <label className="block text-xs text-gray-500 mb-1">邮箱</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={e => setEditEmail(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500 max-w-xs"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs text-gray-500 mb-1">个性签名</label>
                   <textarea
                     value={editBio}
@@ -264,6 +319,11 @@ export default function UserProfile() {
                 <p className="text-sm text-gray-400">
                   加入于 {new Date(profile.created_at).toLocaleDateString('zh-CN')} · {profile.shortcut_count} 个分享
                 </p>
+                {isOwner && profile.email && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {profile.email}
+                  </p>
+                )}
                 <div className="mt-3">
                   {profile.bio ? (
                     <p className="text-gray-600 text-sm">{profile.bio}</p>
@@ -380,9 +440,16 @@ export default function UserProfile() {
           {shortcuts.map(s => (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[s.category] || categoryColors['其他']}`}>
-                  {s.category}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[s.category] || categoryColors['其他']}`}>
+                    {s.category}
+                  </span>
+                  {s.status === 'removed' && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                      已下架
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-gray-400">
                   {new Date(s.created_at).toLocaleDateString('zh-CN')}
                 </span>
@@ -423,6 +490,23 @@ export default function UserProfile() {
                   >
                     获取
                   </a>
+                  {isOwner && (
+                    s.status === 'removed' ? (
+                      <button
+                        onClick={() => handleRestoreShortcut(s.id)}
+                        className="text-green-600 text-xs hover:text-green-800"
+                      >
+                        恢复
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRemoveShortcut(s.id)}
+                        className="text-red-500 text-xs hover:text-red-700"
+                      >
+                        下架
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
             </div>

@@ -79,16 +79,20 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: '用户名或密码错误' });
   }
 
+  if (user.banned) {
+    return res.status(403).json({ error: '您的账号已被封禁' });
+  }
+
   const token = generateToken(user);
   res.json({
     token,
-    user: { id: user.id, username: user.username, email: user.email }
+    user: { id: user.id, username: user.username, email: user.email, role: user.role }
   });
 });
 
 router.get('/me', authRequired, (req, res) => {
   const db = getDb();
-  const user = db.prepare('SELECT id, username, email, avatar, bio, created_at FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, username, email, avatar, bio, role, created_at FROM users WHERE id = ?').get(req.user.id);
   if (!user) {
     return res.status(404).json({ error: '用户不存在' });
   }
@@ -106,7 +110,7 @@ router.get('/:id', (req, res) => {
 });
 
 router.put('/profile', authRequired, (req, res) => {
-  const { bio, username } = req.body;
+  const { bio, username, email } = req.body;
   const db = getDb();
 
   if (username !== undefined) {
@@ -116,6 +120,17 @@ router.put('/profile', authRequired, (req, res) => {
     const existing = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, req.user.id);
     if (existing) {
       return res.status(400).json({ error: '该用户名已被使用' });
+    }
+  }
+
+  if (email !== undefined) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: '邮箱格式不正确' });
+    }
+    const existing = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.user.id);
+    if (existing) {
+      return res.status(400).json({ error: '该邮箱已被使用' });
     }
   }
 
@@ -129,6 +144,10 @@ router.put('/profile', authRequired, (req, res) => {
   if (username !== undefined) {
     updates.push('username = ?');
     params.push(username);
+  }
+  if (email !== undefined) {
+    updates.push('email = ?');
+    params.push(email);
   }
 
   if (updates.length === 0) {

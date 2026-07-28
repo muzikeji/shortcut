@@ -11,12 +11,17 @@ function isValidShortcutUrl(url) {
 }
 
 router.get('/', authOptional, (req, res) => {
-  const { search, sort, userId, page = 1, limit = 20 } = req.query;
+  const { search, sort, userId, page = 1, limit = 20, includeRemoved } = req.query;
   const db = getDb();
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
   const conditions = [];
   const params = [];
+
+  if (!includeRemoved) {
+    conditions.push("s.status = 'active'");
+    conditions.push('(u.banned IS NULL OR u.banned = 0)');
+  }
 
   if (search) {
     conditions.push('(s.title LIKE ? OR s.description LIKE ?)');
@@ -30,7 +35,7 @@ router.get('/', authOptional, (req, res) => {
 
   const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
-  const countSql = `SELECT COUNT(*) as total FROM shortcuts s ${where}`;
+  const countSql = `SELECT COUNT(*) as total FROM shortcuts s LEFT JOIN users u ON s.user_id = u.id ${where}`;
   const total = db.prepare(countSql).get(...params).total;
 
   let orderBy = 'ORDER BY s.created_at DESC';
@@ -148,6 +153,36 @@ router.delete('/:id', authRequired, (req, res) => {
 
   db.prepare('DELETE FROM shortcuts WHERE id = ?').run(req.params.id);
   res.json({ message: '删除成功' });
+});
+
+router.put('/:id/remove', authRequired, (req, res) => {
+  const db = getDb();
+  const shortcut = db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(req.params.id);
+
+  if (!shortcut) {
+    return res.status(404).json({ error: '快捷指令不存在' });
+  }
+  if (shortcut.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: '无权下架该快捷指令' });
+  }
+
+  db.prepare("UPDATE shortcuts SET status = 'removed' WHERE id = ?").run(req.params.id);
+  res.json({ message: '下架成功' });
+});
+
+router.put('/:id/restore', authRequired, (req, res) => {
+  const db = getDb();
+  const shortcut = db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(req.params.id);
+
+  if (!shortcut) {
+    return res.status(404).json({ error: '快捷指令不存在' });
+  }
+  if (shortcut.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: '无权恢复该快捷指令' });
+  }
+
+  db.prepare("UPDATE shortcuts SET status = 'active' WHERE id = ?").run(req.params.id);
+  res.json({ message: '恢复成功' });
 });
 
 router.get('/:id/download', (req, res) => {

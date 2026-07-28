@@ -12,6 +12,7 @@ export default function ShortcutDetail() {
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -74,6 +75,36 @@ export default function ShortcutDetail() {
     }
   };
 
+  const handleRemove = async () => {
+    if (!shortcut) return;
+    if (!confirm('确定要下架该分享吗？')) return;
+    setActionLoading(true);
+    try {
+      await api.removeShortcut(shortcut.id);
+      setShortcut({ ...shortcut, status: 'removed' });
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!shortcut) return;
+    setActionLoading(true);
+    try {
+      await api.restoreShortcut(shortcut.id);
+      setShortcut({ ...shortcut, status: 'active' });
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const isOwner = user && shortcut && user.id === shortcut.user_id;
+  const isAdmin = user?.role === 'admin';
+
   if (loading) {
     return <div className="text-center py-20 text-gray-400">加载中...</div>;
   }
@@ -96,6 +127,11 @@ export default function ShortcutDetail() {
           <span className="text-xs text-gray-400">
             {new Date(shortcut.created_at).toLocaleDateString('zh-CN')}
           </span>
+          {shortcut.status === 'removed' && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+              已下架
+            </span>
+          )}
         </div>
 
         <h1 className="text-2xl font-bold text-gray-800 mb-3">{shortcut.title}</h1>
@@ -112,7 +148,7 @@ export default function ShortcutDetail() {
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <a
             href={api.getDownloadUrl(shortcut.id)}
             target="_blank"
@@ -141,73 +177,101 @@ export default function ShortcutDetail() {
             </svg>
             {shortcut.download_count} 次下载
           </span>
+
+          {(isOwner || isAdmin) && (
+            <div className="flex items-center gap-2 ml-auto border-l border-gray-200 pl-4">
+              {shortcut.status === 'removed' ? (
+                <button
+                  onClick={handleRestore}
+                  disabled={actionLoading}
+                  className="text-green-600 hover:text-green-800 text-sm font-medium disabled:opacity-50"
+                >
+                  {actionLoading ? '处理中...' : '恢复上架'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleRemove}
+                  disabled={actionLoading}
+                  className="text-red-500 hover:text-red-700 text-sm font-medium disabled:opacity-50"
+                >
+                  {actionLoading ? '处理中...' : '下架'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* 评论区 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          评论 ({shortcut.comment_count})
-        </h2>
+      {shortcut.status === 'removed' ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-400 text-sm">
+          该分享已被下架，评论功能已关闭
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            评论 ({shortcut.comment_count})
+          </h2>
 
-        {user ? (
-          <form onSubmit={handleComment} className="mb-6">
-            <textarea
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              placeholder="写下你的评论..."
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
-              rows={3}
-            />
-            <div className="flex justify-end mt-2">
-              <button
-                type="submit"
-                disabled={commentLoading || !commentText.trim()}
-                className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-              >
-                {commentLoading ? '提交中...' : '发表评论'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg text-sm text-gray-500 text-center">
-            请
-            <Link to="/login" className="text-blue-600 hover:underline mx-1">登录</Link>
-            后发表评论
-          </div>
-        )}
-
-        {comments.length === 0 ? (
-          <p className="text-center text-gray-400 text-sm py-4">暂无评论</p>
-        ) : (
-          <div className="space-y-4">
-            {comments.map(c => (
-              <div key={c.id} className="flex gap-3">
-                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium shrink-0">
-                  {c.username?.[0]?.toUpperCase() || '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-800">{c.username}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(c.created_at).toLocaleString('zh-CN')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 break-words">{c.content}</p>
-                  {user?.id === c.user_id && (
-                    <button
-                      onClick={() => handleDeleteComment(c.id)}
-                      className="text-xs text-gray-400 hover:text-red-500 mt-1"
-                    >
-                      删除
-                    </button>
-                  )}
-                </div>
+          {user ? (
+            <form onSubmit={handleComment} className="mb-6">
+              <textarea
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                placeholder="写下你的评论..."
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
+                rows={3}
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  type="submit"
+                  disabled={commentLoading || !commentText.trim()}
+                  className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {commentLoading ? '提交中...' : '发表评论'}
+                </button>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </form>
+          ) : (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg text-sm text-gray-500 text-center">
+              请
+              <Link to="/login" className="text-blue-600 hover:underline mx-1">登录</Link>
+              后发表评论
+            </div>
+          )}
+
+          {comments.length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-4">暂无评论</p>
+          ) : (
+            <div className="space-y-4">
+              {comments.map(c => (
+                <div key={c.id} className="flex gap-3">
+                  <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium shrink-0">
+                    {c.username?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-gray-800">{c.username}</span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(c.created_at).toLocaleString('zh-CN')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 break-words">{c.content}</p>
+                    {user?.id === c.user_id && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="text-xs text-gray-400 hover:text-red-500 mt-1"
+                      >
+                        删除
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
