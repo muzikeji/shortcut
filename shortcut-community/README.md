@@ -20,11 +20,12 @@ shortcut-community/
 │   ├── src/
 │   │   ├── index.js           # 服务入口
 │   │   ├── database.js        # SQLite 数据库初始化
-│   │   ├── auth.js            # JWT 认证中间件
+│   │   ├── auth.js            # JWT 认证中间件（含管理员验证）
 │   │   └── routes/
-│   │       ├── user.js        # 用户注册/登录
-│   │       ├── shortcut.js    # 快捷指令 CRUD / 下载
-│   │       └── interact.js    # 点赞 / 评论
+│   │       ├── user.js        # 用户注册/登录/资料修改
+│   │       ├── shortcut.js    # 快捷指令 CRUD / 下架 / 恢复
+│   │       ├── interact.js    # 点赞 / 评论
+│   │       └── admin.js       # 管理员接口
 │   ├── data/                  # SQLite 数据库文件（自动创建）
 │   ├── uploads/               # 快捷指令文件上传目录（自动创建）
 │   └── package.json
@@ -36,8 +37,10 @@ shortcut-community/
     │   │   ├── Home.tsx           # 首页（列表 / 搜索 / 排序）
     │   │   ├── Login.tsx          # 登录页
     │   │   ├── Register.tsx       # 注册页
-    │   │   ├── ShortcutDetail.tsx # 详情页（下载 / 点赞 / 评论）
-    │   │   ├── Share.tsx          # 分享页（上传）
+    │   │   ├── ShortcutDetail.tsx # 详情页（下载 / 点赞 / 评论 / 下架）
+    │   │   ├── Share.tsx          # 分享页
+    │   │   ├── UserProfile.tsx    # 用户主页（含资料修改）
+    │   │   ├── Admin.tsx          # 管理后台
     │   │   └── types.ts
     │   └── components/
     │       ├── Navbar.tsx     # 导航栏
@@ -52,6 +55,14 @@ shortcut-community/
 
 - Node.js 18+
 - npm
+- Git
+
+### 拉取代码
+
+```bash
+git clone https://github.com/muzikeji/shortcut.git
+cd shortcut
+```
 
 ### 安装依赖
 
@@ -106,17 +117,38 @@ npm run build
 
 ### 权限设计
 
-| 功能 | 未登录用户 | 已登录用户 |
-|------|-----------|-----------|
-| 浏览快捷指令列表 | 支持 | 支持 |
-| 搜索快捷指令 | 支持 | 支持 |
-| 按最新/最热/下载量排序 | 支持 | 支持 |
-| 下载快捷指令 | 支持 | 支持 |
-| 查看评论 | 支持 | 支持 |
-| 分享快捷指令 | 不支持 | 支持 |
-| 点赞/取消点赞 | 不支持 | 支持 |
-| 发表评论 | 不支持 | 支持 |
-| 删除自己的评论 | N/A | 支持 |
+| 功能 | 未登录用户 | 已登录用户 | 管理员 |
+|------|-----------|-----------|--------|
+| 浏览快捷指令列表 | 支持 | 支持 | 支持 |
+| 搜索快捷指令 | 支持 | 支持 | 支持 |
+| 按最新/最热/下载量排序 | 支持 | 支持 | 支持 |
+| 下载快捷指令 | 支持 | 支持 | 支持 |
+| 查看评论 | 支持 | 支持 | 支持 |
+| 分享快捷指令 | 不支持 | 支持 | 支持 |
+| 点赞/取消点赞 | 不支持 | 支持 | 支持 |
+| 发表评论 | 不支持 | 支持 | 支持 |
+| 删除自己的评论 | N/A | 支持 | 支持 |
+| 修改个人资料 | N/A | 支持 | 支持 |
+| 修改密码 | N/A | 支持 | 支持 |
+| 下架/恢复自己的分享 | N/A | 支持 | 支持 |
+| 管理后台 | N/A | 不支持 | 支持 |
+| 封禁/解封用户 | N/A | 不支持 | 支持 |
+| 下架/恢复任意分享 | N/A | 不支持 | 支持 |
+
+### 管理员配置
+
+管理员通过直接在数据库中设置用户 `role` 字段为 `admin` 来指定：
+
+```bash
+cd shortcut-community/backend
+node -e "
+const { getDb } = require('./src/database');
+const db = getDb();
+db.prepare(\"UPDATE users SET role = 'admin' WHERE username = '你的用户名'\").run();
+"
+```
+
+管理员登录后在导航栏可见「管理」入口，进入管理后台可进行用户封禁/解封和分享下架/恢复操作。
 
 ### API 接口
 
@@ -127,16 +159,22 @@ npm run build
 | POST | `/api/users/register` | 注册 | 否 |
 | POST | `/api/users/login` | 登录 | 否 |
 | GET | `/api/users/me` | 获取当前用户信息 | 是 |
+| GET | `/api/users/:id` | 获取用户公开信息 | 否 |
+| PUT | `/api/users/profile` | 修改资料（用户名/邮箱/签名） | 是 |
+| PUT | `/api/users/password` | 修改密码 | 是 |
+| POST | `/api/users/avatar` | 上传头像 | 是 |
 
 **快捷指令**
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| GET | `/api/shortcuts` | 列表（支持 `?search=&sort=&page=`） | 否 |
+| GET | `/api/shortcuts` | 列表（支持 `?search=&sort=&page=&userId=`） | 否 |
 | GET | `/api/shortcuts/:id` | 详情 | 否 |
-| POST | `/api/shortcuts` | 分享（multipart/form-data） | 是 |
-| GET | `/api/shortcuts/:id/download` | 下载文件 | 否 |
+| POST | `/api/shortcuts` | 分享（iCloud 链接） | 是 |
+| GET | `/api/shortcuts/:id/download` | 下载/跳转 | 否 |
 | DELETE | `/api/shortcuts/:id` | 删除（仅限作者） | 是 |
+| PUT | `/api/shortcuts/:id/remove` | 下架（作者或管理员） | 是 |
+| PUT | `/api/shortcuts/:id/restore` | 恢复上架（作者或管理员） | 是 |
 
 **互动**
 
@@ -146,6 +184,15 @@ npm run build
 | GET | `/api/shortcuts/:id/comments` | 评论列表 | 否 |
 | POST | `/api/shortcuts/:id/comments` | 发表评论 | 是 |
 | DELETE | `/api/shortcuts/:id/comments/:commentId` | 删除评论 | 是 |
+
+**管理员**
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/admin/users` | 用户列表 | 管理员 |
+| PUT | `/api/admin/users/:id/ban` | 封禁用户并下架其所有分享 | 管理员 |
+| PUT | `/api/admin/users/:id/unban` | 解封用户 | 管理员 |
+| GET | `/api/admin/shortcuts` | 全部分享列表（含已下架） | 管理员 |
 
 ### 分享快捷指令格式
 
