@@ -86,6 +86,12 @@ export const api = {
     }),
   deleteShortcut: (id: number) =>
     request(`/shortcuts/${id}`, { method: 'DELETE' }),
+  updateShortcut: (id: number, body: { title: string; description?: string; category?: string }) =>
+    request(`/shortcuts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   removeShortcut: (id: number) =>
     request(`/shortcuts/${id}/remove`, { method: 'PUT' }),
   restoreShortcut: (id: number) =>

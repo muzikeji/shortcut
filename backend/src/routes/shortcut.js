@@ -140,6 +140,51 @@ router.post('/', authRequired, (req, res) => {
   res.json({ shortcut });
 });
 
+router.put('/:id', authRequired, (req, res) => {
+  const db = getDb();
+  const shortcut = db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(req.params.id);
+
+  if (!shortcut) {
+    return res.status(404).json({ error: '快捷指令不存在' });
+  }
+  if (shortcut.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: '无权编辑该快捷指令' });
+  }
+
+  const { title, description, category } = req.body;
+
+  if (!title) {
+    return res.status(400).json({ error: '请输入快捷指令名称' });
+  }
+
+  const updates = [];
+  const params = [];
+
+  updates.push('title = ?');
+  params.push(title);
+
+  if (description !== undefined) {
+    updates.push('description = ?');
+    params.push(description);
+  }
+  if (category !== undefined) {
+    updates.push('category = ?');
+    params.push(category);
+  }
+
+  params.push(req.params.id);
+  db.prepare(`UPDATE shortcuts SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+  const updated = db.prepare(`
+    SELECT s.*, u.username, u.avatar
+    FROM shortcuts s
+    LEFT JOIN users u ON s.user_id = u.id
+    WHERE s.id = ?
+  `).get(req.params.id);
+
+  res.json({ shortcut: updated });
+});
+
 router.delete('/:id', authRequired, (req, res) => {
   const db = getDb();
   const shortcut = db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(req.params.id);

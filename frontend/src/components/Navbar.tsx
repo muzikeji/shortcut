@@ -49,15 +49,18 @@ export default function Navbar() {
               >
                 分享
               </Link>
-              {user.avatar ? (
-                <img src={user.avatar} alt="avatar" className="w-7 h-7 rounded-full object-cover shrink-0" />
-              ) : (
-                <div className="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-                  {user.username?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
-              <Link to={`/user/${user.id}`} className="text-sm text-gray-700 hover:text-blue-600 hidden sm:inline font-medium">
-                {user.username}
+              <Link
+                to={`/user/${user.id}`}
+                className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600"
+              >
+                {user.avatar ? (
+                  <img src={user.avatar} alt="avatar" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                    {user.username?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+                <span className="hidden sm:inline font-medium">{user.username}</span>
               </Link>
               <button
                 onClick={logout}
