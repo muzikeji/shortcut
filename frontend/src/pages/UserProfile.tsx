@@ -41,7 +41,7 @@ export default function UserProfile() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = currentUser && profile && currentUser.id === profile.id;
-  const isOwnProfile = currentUser && Number(id) === currentUser.id;
+  const isOwnProfile = !!(currentUser && Number(id) === currentUser.id);
 
   useEffect(() => {
     if (!id) return;
