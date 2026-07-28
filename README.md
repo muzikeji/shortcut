@@ -105,28 +105,57 @@ cd frontend && npm run dev
 ### 生产部署
 
 ```bash
-# 构建前端
+# 1. 拉取最新代码
+git pull
+
+# 2. 构建前端
 cd frontend
 npm run build
 
-# 启动后端（后端会自动托管前端 dist/ 目录）
+# 3. 启动后端（后端会自动托管前端 dist/ 目录）
 cd ../backend
 npm start
 ```
 
-后端启动后会自动检测 `frontend/dist/` 目录，若存在则托管静态文件并处理 SPA 路由，访问 `http://localhost:3001` 即可。
+后端启动后会自动检测 `frontend/dist/` 目录，若存在则托管静态文件并处理 SPA 路由。访问 `http://localhost:3001` 即可使用。
+
+**首次部署后设置管理员：**
+
+```bash
+cd ~/shortcut/backend
+node -e "
+const { getDb } = require('./src/database');
+const db = getDb();
+db.prepare(\"UPDATE users SET role = 'admin' WHERE username = '你的用户名'\").run();
+console.log('已设为管理员');
+"
+```
+
+设置后重新登录，导航栏中会出现「管理」入口。
 
 **常驻后台运行：**
 
 ```bash
 # 使用 nohup（简单）
+cd ~/shortcut/backend
 nohup node src/index.js > app.log 2>&1 &
 
-# 或使用 pm2（推荐，支持自动重启）
+# 或使用 pm2（推荐，支持崩溃自动重启）
 npm install -g pm2
+cd ~/shortcut/backend
 pm2 start src/index.js --name shortcut
 pm2 save
 pm2 startup
+```
+
+**更新部署：**
+
+```bash
+cd ~/shortcut
+git pull
+cd frontend && npm run build
+pm2 restart shortcut     # 若使用 pm2
+# 或 kill 原进程后重新 nohup 启动
 ```
 
 ## 功能说明
