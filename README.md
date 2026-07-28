@@ -15,7 +15,6 @@
 ## 项目结构
 
 ```
-shortcut-community/
 ├── backend/
 │   ├── src/
 │   │   ├── index.js           # 服务入口
@@ -27,7 +26,7 @@ shortcut-community/
 │   │       ├── interact.js    # 点赞 / 评论
 │   │       └── admin.js       # 管理员接口
 │   ├── data/                  # SQLite 数据库文件（自动创建）
-│   ├── uploads/               # 快捷指令文件上传目录（自动创建）
+│   ├── uploads/               # 文件上传目录（自动创建）
 │   └── package.json
 └── frontend/
     ├── src/
@@ -68,7 +67,7 @@ cd shortcut
 
 ```bash
 # 安装后端依赖
-cd shortcut-community/backend
+cd backend
 npm install
 
 # 安装前端依赖
@@ -81,14 +80,14 @@ npm install
 后端（默认端口 3001）：
 
 ```bash
-cd shortcut-community/backend
+cd backend
 npm run dev
 ```
 
 前端（默认端口 5173）：
 
 ```bash
-cd shortcut-community/frontend
+cd frontend
 npm run dev
 ```
 
@@ -99,15 +98,15 @@ npm run dev
 ### 一键启动
 
 ```bash
-cd shortcut-community/backend && npm run dev &
-cd shortcut-community/frontend && npm run dev
+cd backend && npm run dev &
+cd frontend && npm run dev
 ```
 
 ### 生产部署
 
 ```bash
 # 构建前端
-cd shortcut-community/frontend
+cd frontend
 npm run build
 
 # 构建产物在 dist/ 目录，可由后端直接托管或使用 Nginx
@@ -140,7 +139,7 @@ npm run build
 管理员通过直接在数据库中设置用户 `role` 字段为 `admin` 来指定：
 
 ```bash
-cd shortcut-community/backend
+cd backend
 node -e "
 const { getDb } = require('./src/database');
 const db = getDb();
