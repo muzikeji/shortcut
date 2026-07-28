@@ -109,7 +109,24 @@ cd frontend && npm run dev
 cd frontend
 npm run build
 
-# 构建产物在 dist/ 目录，可由后端直接托管或使用 Nginx
+# 启动后端（后端会自动托管前端 dist/ 目录）
+cd ../backend
+npm start
+```
+
+后端启动后会自动检测 `frontend/dist/` 目录，若存在则托管静态文件并处理 SPA 路由，访问 `http://localhost:3001` 即可。
+
+**常驻后台运行：**
+
+```bash
+# 使用 nohup（简单）
+nohup node src/index.js > app.log 2>&1 &
+
+# 或使用 pm2（推荐，支持自动重启）
+npm install -g pm2
+pm2 start src/index.js --name shortcut
+pm2 save
+pm2 startup
 ```
 
 ## 功能说明
