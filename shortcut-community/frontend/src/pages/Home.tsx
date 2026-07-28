@@ -120,9 +120,11 @@ export default function Home() {
                   </Link>
                   <a
                     href={api.getDownloadUrl(s.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-blue-600 text-sm hover:text-blue-800 font-medium"
                   >
-                    下载
+                    获取
                   </a>
                 </div>
               </div>

@@ -53,10 +53,11 @@ export const api = {
     return request(`/shortcuts?${query.toString()}`);
   },
   getShortcut: (id: number) => request(`/shortcuts/${id}`),
-  createShortcut: (formData: FormData) =>
+  createShortcut: (body: { title: string; description: string; category: string; url: string }) =>
     request('/shortcuts', {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     }),
   deleteShortcut: (id: number) =>
     request(`/shortcuts/${id}`, { method: 'DELETE' }),

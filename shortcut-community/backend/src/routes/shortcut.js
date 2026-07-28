@@ -1,51 +1,14 @@
 const express = require('express');
-const path = require('path');
-const multer = require('multer');
 const { getDb } = require('../database');
 const { authRequired, authOptional } = require('../auth');
 
 const router = express.Router();
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+const ICLOUD_SHORTCUT_REGEX = /^https?:\/\/(www\.)?icloud\.com\/shortcuts\/[a-zA-Z0-9]+$/i;
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const fs = require('fs');
-    if (!fs.existsSync(UPLOAD_DIR)) {
-      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    }
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + ext);
-  }
-});
-
-const ALLOWED_TYPES = [
-  'application/octet-stream',
-  'application/x-apple-aspen-config',
-  'text/xml',
-  'application/xml',
-  'application/zip',
-  'application/x-zip-compressed',
-  'application/x-www-form-urlencoded'
-];
-
-const MAX_SIZE = 10 * 1024 * 1024;
-
-const upload = multer({
-  storage,
-  limits: { fileSize: MAX_SIZE },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (ext === '.shortcut') {
-      cb(null, true);
-    } else {
-      cb(null, true);
-    }
-  }
-});
+function isValidShortcutUrl(url) {
+  return ICLOUD_SHORTCUT_REGEX.test(url);
+}
 
 router.get('/', authOptional, (req, res) => {
   const { search, sort, page = 1, limit = 20 } = req.query;
@@ -124,27 +87,34 @@ router.get('/:id', authOptional, (req, res) => {
   res.json({ shortcut: { ...shortcut, liked } });
 });
 
-router.post('/', authRequired, upload.single('file'), (req, res) => {
-  const { title, description, category } = req.body;
+router.post('/', authRequired, (req, res) => {
+  const { title, description, category, url } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: '请输入快捷指令名称' });
   }
-  if (!req.file) {
-    return res.status(400).json({ error: '请上传快捷指令文件' });
+  if (!url) {
+    return res.status(400).json({ error: '请提供快捷指令链接' });
+  }
+  if (!isValidShortcutUrl(url)) {
+    return res.status(400).json({ error: '请输入有效的 iCloud 快捷指令链接 (https://www.icloud.com/shortcuts/xxx)' });
   }
 
   const db = getDb();
+
+  const existing = db.prepare('SELECT id FROM shortcuts WHERE file_url = ?').get(url);
+  if (existing) {
+    return res.status(400).json({ error: '该快捷指令已被分享' });
+  }
+
   const result = db.prepare(`
     INSERT INTO shortcuts (title, description, category, file_url, file_name, file_size, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, '', 0, ?)
   `).run(
     title,
     description || '',
     category || '其他',
-    '/api/uploads/' + req.file.filename,
-    req.file.originalname,
-    req.file.size,
+    url,
     req.user.id
   );
 
@@ -183,13 +153,7 @@ router.get('/:id/download', (req, res) => {
 
   db.prepare('UPDATE shortcuts SET download_count = download_count + 1 WHERE id = ?').run(shortcut.id);
 
-  const filePath = path.join(UPLOAD_DIR, path.basename(shortcut.file_url));
-  const fs = require('fs');
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: '文件不存在' });
-  }
-
-  res.download(filePath, shortcut.file_name);
+  res.redirect(shortcut.file_url);
 });
 
 module.exports = router;

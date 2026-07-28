@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
 const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'];
+const ICLOUD_REGEX = /^https?:\/\/(www\.)?icloud\.com\/shortcuts\/[a-zA-Z0-9]+$/i;
 
 export default function Share() {
   const { user } = useAuth();
@@ -11,15 +12,16 @@ export default function Share() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('其他');
-  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!user) {
     navigate('/login');
     return null;
   }
+
+  const isValidUrl = (value: string) => ICLOUD_REGEX.test(value);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,20 +31,23 @@ export default function Share() {
       setError('请输入快捷指令名称');
       return;
     }
-    if (!file) {
-      setError('请选择快捷指令文件');
+    if (!url.trim()) {
+      setError('请提供 iCloud 快捷指令链接');
+      return;
+    }
+    if (!isValidUrl(url.trim())) {
+      setError('请输入有效的 iCloud 快捷指令链接 (https://www.icloud.com/shortcuts/xxx)');
       return;
     }
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('description', description.trim());
-      formData.append('category', category);
-      formData.append('file', file);
-
-      const data = await api.createShortcut(formData);
+      const data = await api.createShortcut({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        url: url.trim(),
+      });
       navigate(`/shortcut/${data.shortcut.id}`);
     } catch (err: any) {
       setError(err.message);
@@ -50,6 +55,8 @@ export default function Share() {
       setLoading(false);
     }
   };
+
+  const urlError = url && !isValidUrl(url) ? '链接格式不正确' : '';
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
@@ -100,33 +107,21 @@ export default function Share() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">文件 *</label>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-blue-400 ${file ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".shortcut,.plist,.xml"
-              onChange={e => setFile(e.target.files?.[0] || null)}
-              className="hidden"
-            />
-            {file ? (
-              <div className="text-sm">
-                <p className="text-blue-600 font-medium">{file.name}</p>
-                <p className="text-gray-400 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
-              </div>
-            ) : (
-              <div>
-                <svg className="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <p className="text-sm text-gray-400">点击选择快捷指令文件</p>
-                <p className="text-xs text-gray-300 mt-1">支持 .shortcut 格式，最大 10MB</p>
-              </div>
-            )}
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">iCloud 链接 *</label>
+          <input
+            type="url"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://www.icloud.com/shortcuts/xxxxxxxx"
+            className={`w-full px-3 py-2 rounded-lg border outline-none ${urlError ? 'border-red-400 focus:ring-2 focus:ring-red-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}`}
+            required
+          />
+          {urlError && (
+            <p className="text-red-500 text-xs mt-1">{urlError}</p>
+          )}
+          <p className="text-xs text-gray-400 mt-1">
+            在 iOS 快捷指令 App 中分享快捷指令，选择"拷贝 iCloud 链接"，然后粘贴到此处
+          </p>
         </div>
 
         <button
@@ -134,7 +129,7 @@ export default function Share() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? '上传中...' : '发布快捷指令'}
+          {loading ? '发布中...' : '发布快捷指令'}
         </button>
       </form>
     </div>
