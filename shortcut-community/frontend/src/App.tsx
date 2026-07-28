@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ShortcutDetail from './pages/ShortcutDetail';
 import Share from './pages/Share';
+import UserProfile from './pages/UserProfile';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/shortcut/:id" element={<ShortcutDetail />} />
               <Route path="/share" element={<Share />} />
+              <Route path="/user/:id" element={<UserProfile />} />
             </Routes>
           </main>
           <Footer />

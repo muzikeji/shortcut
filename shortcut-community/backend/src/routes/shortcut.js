@@ -11,17 +11,24 @@ function isValidShortcutUrl(url) {
 }
 
 router.get('/', authOptional, (req, res) => {
-  const { search, sort, page = 1, limit = 20 } = req.query;
+  const { search, sort, userId, page = 1, limit = 20 } = req.query;
   const db = getDb();
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  let where = '';
+  const conditions = [];
   const params = [];
 
   if (search) {
-    where = 'WHERE s.title LIKE ? OR s.description LIKE ?';
+    conditions.push('(s.title LIKE ? OR s.description LIKE ?)');
     params.push(`%${search}%`, `%${search}%`);
   }
+
+  if (userId) {
+    conditions.push('s.user_id = ?');
+    params.push(parseInt(userId));
+  }
+
+  const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
   const countSql = `SELECT COUNT(*) as total FROM shortcuts s ${where}`;
   const total = db.prepare(countSql).get(...params).total;

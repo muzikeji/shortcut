@@ -99,7 +99,7 @@ export default function Home() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <span className="text-blue-500">{s.username}</span>
+                  <Link to={`/user/${s.user_id}`} className="text-blue-500 hover:text-blue-700">{s.username}</Link>
                   <span>{s.download_count} 次下载</span>
                 </div>
                 <div className="flex items-center gap-3">

@@ -39,17 +39,40 @@ export const api = {
       body: JSON.stringify(body),
     }),
   getMe: () => request('/users/me'),
+  getUser: (id: number) => request(`/users/${id}`),
+  updateProfile: (body: { bio?: string; username?: string }) =>
+    request('/users/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  updatePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request('/users/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  uploadAvatar: (file: File) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return request('/users/avatar', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   // Shortcuts
   getShortcuts: (params: {
     page?: number;
     search?: string;
     sort?: string;
+    userId?: number;
   }) => {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.search) query.set('search', params.search);
     if (params.sort) query.set('sort', params.sort);
+    if (params.userId) query.set('userId', String(params.userId));
     return request(`/shortcuts?${query.toString()}`);
   },
   getShortcut: (id: number) => request(`/shortcuts/${id}`),

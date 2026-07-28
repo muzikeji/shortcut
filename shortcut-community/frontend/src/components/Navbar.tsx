@@ -41,7 +41,16 @@ export default function Navbar() {
               >
                 分享
               </Link>
-              <span className="text-sm text-gray-600 hidden sm:inline">{user.username}</span>
+              {user.avatar ? (
+                <img src={user.avatar} alt="avatar" className="w-7 h-7 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
+                  {user.username?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+              <Link to={`/user/${user.id}`} className="text-sm text-gray-700 hover:text-blue-600 hidden sm:inline font-medium">
+                {user.username}
+              </Link>
               <button
                 onClick={logout}
                 className="text-sm text-gray-500 hover:text-gray-700"

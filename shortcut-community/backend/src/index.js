@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const userRoutes = require('./routes/user');
 const shortcutRoutes = require('./routes/shortcut');
@@ -14,6 +15,8 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/shortcuts', shortcutRoutes);
 app.use('/api/shortcuts', interactRoutes);
+
+app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);

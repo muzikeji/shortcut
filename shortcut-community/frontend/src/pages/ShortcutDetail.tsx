@@ -102,7 +102,7 @@ export default function ShortcutDetail() {
         <p className="text-gray-600 mb-4">{shortcut.description || '暂无描述'}</p>
 
         <div className="flex items-center text-sm text-gray-500 mb-4 gap-4">
-          <span>分享者: <span className="text-blue-600">{shortcut.username}</span></span>
+          <span>分享者: <Link to={`/user/${shortcut.user_id}`} className="text-blue-600 hover:text-blue-800">{shortcut.username}</Link></span>
         </div>
 
         <div className="flex items-center text-sm text-gray-500 mb-5">

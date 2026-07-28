@@ -28,6 +28,7 @@ function initTables() {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       avatar TEXT DEFAULT '',
+      bio TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -73,6 +74,10 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_likes_user ON likes(user_id);
     CREATE INDEX IF NOT EXISTS idx_comments_shortcut ON comments(shortcut_id);
   `);
+
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''`);
+  } catch {}
 }
 
 module.exports = { getDb };
