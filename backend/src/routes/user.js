@@ -7,7 +7,7 @@ const { generateToken, authRequired } = require('../auth');
 
 const router = express.Router();
 
-const AVATAR_DIR = path.join(__dirname, '..', 'uploads', 'avatars');
+const AVATAR_DIR = path.join(__dirname, '..', '..', 'uploads', 'avatars');
 
 const avatarStorage = multer.diskStorage({
   destination: (req, file, cb) => {
