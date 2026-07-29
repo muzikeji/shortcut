@@ -124,19 +124,27 @@ export const api = {
     }),
 
   // Admin
-  adminGetUsers: (params: { page?: number }) => {
+  adminGetUsers: (params: { page?: number; search?: string }) => {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
+    if (params.search) query.set('search', params.search);
     return request(`/admin/users?${query.toString()}`);
   },
+  adminCreateUser: (body: { username: string; email: string; password: string }) =>
+    request('/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   adminBanUser: (id: number) =>
     request(`/admin/users/${id}/ban`, { method: 'PUT' }),
   adminUnbanUser: (id: number) =>
     request(`/admin/users/${id}/unban`, { method: 'PUT' }),
-  adminGetShortcuts: (params: { page?: number; status?: string }) => {
+  adminGetShortcuts: (params: { page?: number; status?: string; search?: string }) => {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.status) query.set('status', params.status);
+    if (params.search) query.set('search', params.search);
     return request(`/admin/shortcuts?${query.toString()}`);
   },
 };
