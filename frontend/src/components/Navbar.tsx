@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
 
@@ -16,9 +16,7 @@ export default function Navbar() {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2 font-bold text-lg text-blue-600 shrink-0">
-          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
+          <img src="/logo.png" alt="捷径社区" className="w-7 h-7 rounded" />
           <span className="hidden sm:inline">捷径社区</span>
         </Link>
 
@@ -35,19 +33,11 @@ export default function Navbar() {
         <div className="flex items-center gap-3 shrink-0">
           {user ? (
             <>
-              {user.role === 'admin' && (
-                <Link
-                  to="/admin"
-                  className="text-sm text-purple-600 hover:text-purple-800 font-medium"
-                >
-                  管理
-                </Link>
-              )}
               <Link
                 to="/share"
                 className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700"
               >
-                分享
+                发布
               </Link>
               <Link
                 to={`/user/${user.id}`}
@@ -62,12 +52,6 @@ export default function Navbar() {
                 )}
                 <span className="hidden sm:inline font-medium">{user.username}</span>
               </Link>
-              <button
-                onClick={logout}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                退出
-              </button>
             </>
           ) : (
             <>

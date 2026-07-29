@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { Shortcut } from './types';
@@ -16,7 +16,7 @@ interface UserProfile {
 
 export default function UserProfile() {
   const { id } = useParams<{ id: string }>();
-  const { user: currentUser, updateUser } = useAuth();
+  const { user: currentUser, updateUser, logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,7 @@ export default function UserProfile() {
 
   const isOwner = currentUser && profile && currentUser.id === profile.id;
   const isOwnProfile = !!(currentUser && Number(id) === currentUser.id);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!id) return;
@@ -332,12 +333,28 @@ export default function UserProfile() {
                   )}
                 </div>
                 {isOwner && (
-                  <button
-                    onClick={startEditing}
-                    className="mt-3 bg-white border border-gray-300 text-gray-600 px-4 py-1.5 rounded-lg text-sm hover:bg-gray-50"
-                  >
-                    编辑资料
-                  </button>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={startEditing}
+                      className="bg-white border border-gray-300 text-gray-600 px-4 py-1.5 rounded-lg text-sm hover:bg-gray-50"
+                    >
+                      编辑资料
+                    </button>
+                    {currentUser.role === 'admin' && (
+                      <Link
+                        to="/admin"
+                        className="bg-purple-50 border border-purple-200 text-purple-600 px-4 py-1.5 rounded-lg text-sm hover:bg-purple-100"
+                      >
+                        管理
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => { logout(); navigate('/'); }}
+                      className="border border-gray-300 text-gray-500 px-4 py-1.5 rounded-lg text-sm hover:bg-gray-50"
+                    >
+                      退出
+                    </button>
+                  </div>
                 )}
               </>
             )}

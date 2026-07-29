@@ -60,7 +60,7 @@ export default function Share() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">分享快捷指令</h1>
+      <h1 className="text-xl font-bold text-gray-800 mb-6">发布快捷指令</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
