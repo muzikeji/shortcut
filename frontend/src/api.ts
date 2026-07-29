@@ -136,6 +136,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  adminSetRole: (id: number, role: 'admin' | 'user') =>
+    request(`/admin/users/${id}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    }),
   adminBanUser: (id: number) =>
     request(`/admin/users/${id}/ban`, { method: 'PUT' }),
   adminUnbanUser: (id: number) =>

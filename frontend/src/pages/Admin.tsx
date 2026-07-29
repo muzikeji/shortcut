@@ -41,6 +41,7 @@ export default function Admin() {
 }
 
 function UserManagement() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -94,6 +95,17 @@ function UserManagement() {
     try {
       await api.adminUnbanUser(id);
       setUsers(prev => prev.map(u => u.id === id ? { ...u, banned: 0 } : u));
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  const handleSetRole = async (id: number, role: 'admin' | 'user') => {
+    const label = role === 'admin' ? '设为管理员' : '取消管理员';
+    if (!confirm(`确定要${label}吗？`)) return;
+    try {
+      await api.adminSetRole(id, role);
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
     } catch (e: any) {
       alert(e.message);
     }
@@ -272,23 +284,33 @@ function UserManagement() {
                     {new Date(u.created_at).toLocaleDateString('zh-CN')}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {u.role !== 'admin' && (
-                      u.banned ? (
+                    <div className="flex items-center justify-end gap-2">
+                      {currentUser && u.id !== currentUser.id && (
                         <button
-                          onClick={() => handleUnban(u.id)}
-                          className="text-green-600 hover:text-green-800 text-sm"
+                          onClick={() => handleSetRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
+                          className={`text-sm ${u.role === 'admin' ? 'text-orange-500 hover:text-orange-700' : 'text-purple-600 hover:text-purple-800'}`}
                         >
-                          解封
+                          {u.role === 'admin' ? '取消管理员' : '设为管理员'}
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => handleBan(u.id)}
-                          className="text-red-500 hover:text-red-700 text-sm"
-                        >
-                          封禁
-                        </button>
-                      )
-                    )}
+                      )}
+                      {u.role !== 'admin' && (
+                        u.banned ? (
+                          <button
+                            onClick={() => handleUnban(u.id)}
+                            className="text-green-600 hover:text-green-800 text-sm"
+                          >
+                            解封
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleBan(u.id)}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            封禁
+                          </button>
+                        )
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

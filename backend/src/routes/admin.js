@@ -146,4 +146,21 @@ router.get('/shortcuts', (req, res) => {
   });
 });
 
+router.put('/users/:id/role', (req, res) => {
+  const db = getDb();
+  const { role } = req.body;
+
+  if (!['admin', 'user'].includes(role)) {
+    return res.status(400).json({ error: '无效的角色' });
+  }
+
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id);
+  if (!user) {
+    return res.status(404).json({ error: '用户不存在' });
+  }
+
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
+  res.json({ message: role === 'admin' ? '已设为管理员' : '已取消管理员' });
+});
+
 module.exports = router;
