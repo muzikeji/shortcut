@@ -68,11 +68,21 @@ function initTables() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS shortcut_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shortcut_id INTEGER NOT NULL,
+      url TEXT NOT NULL,
+      version_note TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (shortcut_id) REFERENCES shortcuts(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_shortcuts_user ON shortcuts(user_id);
     CREATE INDEX IF NOT EXISTS idx_shortcuts_created ON shortcuts(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_likes_shortcut ON likes(shortcut_id);
     CREATE INDEX IF NOT EXISTS idx_likes_user ON likes(user_id);
     CREATE INDEX IF NOT EXISTS idx_comments_shortcut ON comments(shortcut_id);
+    CREATE INDEX IF NOT EXISTS idx_versions_shortcut ON shortcut_versions(shortcut_id);
   `);
 
   try {

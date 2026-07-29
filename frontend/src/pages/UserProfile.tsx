@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { Shortcut } from './types';
+import { CATEGORY_COLORS } from './types';
 
 interface UserProfile {
   id: number;
@@ -177,16 +178,6 @@ export default function UserProfile() {
     return <div className="text-center py-20 text-gray-400">用户不存在</div>;
   }
 
-  const categoryColors: Record<string, string> = {
-    '效率': 'bg-blue-100 text-blue-700',
-    '工具': 'bg-green-100 text-green-700',
-    '娱乐': 'bg-purple-100 text-purple-700',
-    '健康': 'bg-red-100 text-red-700',
-    '学习': 'bg-yellow-100 text-yellow-700',
-    '生活': 'bg-pink-100 text-pink-700',
-    '其他': 'bg-gray-100 text-gray-600',
-  };
-
   const handleLike = async (sid: number) => {
     if (!currentUser) {
       alert('请先登录后再点赞');
@@ -226,7 +217,7 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6 max-w-[1600px] mx-auto">
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex items-start gap-4">
           {/* Avatar */}
@@ -453,12 +444,14 @@ export default function UserProfile() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {shortcuts.map(s => (
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+          {shortcuts.map(s => {
+            const colors = CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他'];
+            return (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[s.category] || categoryColors['其他']}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
                     {s.category}
                   </span>
                   {s.status === 'removed' && (
@@ -527,7 +520,8 @@ export default function UserProfile() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

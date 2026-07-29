@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { Shortcut } from './types';
+import { CATEGORY_COLORS } from './types';
 
 export default function Home() {
   const [searchParams] = useSearchParams();
@@ -13,16 +14,6 @@ export default function Home() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-
-  const categoryColors: Record<string, string> = {
-    '效率': 'bg-blue-100 text-blue-700',
-    '工具': 'bg-green-100 text-green-700',
-    '娱乐': 'bg-purple-100 text-purple-700',
-    '健康': 'bg-red-100 text-red-700',
-    '学习': 'bg-yellow-100 text-yellow-700',
-    '生活': 'bg-pink-100 text-pink-700',
-    '其他': 'bg-gray-100 text-gray-600',
-  };
 
   useEffect(() => {
     setLoading(true);
@@ -51,7 +42,7 @@ export default function Home() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-800">
           {search ? `搜索: "${search}"` : '最新快捷指令'}
@@ -76,11 +67,13 @@ export default function Home() {
           {search ? '没有找到相关快捷指令' : '还没有人分享快捷指令'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {shortcuts.map(s => (
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+          {shortcuts.map(s => {
+            const colors = CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他'];
+            return (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[s.category] || categoryColors['其他']}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
                   {s.category}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -122,14 +115,15 @@ export default function Home() {
                     href={api.getDownloadUrl(s.id)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 text-sm hover:text-blue-800 font-medium"
+                    className={`text-${colors.accent}-600 text-sm hover:text-${colors.accent}-800 font-medium`}
                   >
                     获取
                   </a>
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

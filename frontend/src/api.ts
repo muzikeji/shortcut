@@ -98,6 +98,15 @@ export const api = {
     request(`/shortcuts/${id}/restore`, { method: 'PUT' }),
   getDownloadUrl: (id: number) => `${API}/shortcuts/${id}/download`,
 
+  getVersions: (shortcutId: number) => request(`/shortcuts/${shortcutId}/versions`),
+  addVersion: (shortcutId: number, body: { url: string; version_note: string }) =>
+    request(`/shortcuts/${shortcutId}/versions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  getSimilar: (shortcutId: number) => request(`/shortcuts/${shortcutId}/similar`),
+
   // Likes & Comments
   toggleLike: (shortcutId: number) =>
     request(`/shortcuts/${shortcutId}/like`, { method: 'POST' }),

@@ -130,6 +130,9 @@ router.post('/', authRequired, (req, res) => {
     req.user.id
   );
 
+  db.prepare('INSERT INTO shortcut_versions (shortcut_id, url, version_note) VALUES (?, ?, ?)')
+    .run(result.lastInsertRowid, url, '初始版本');
+
   const shortcut = db.prepare(`
     SELECT s.*, u.username, u.avatar
     FROM shortcuts s
@@ -228,6 +231,73 @@ router.put('/:id/restore', authRequired, (req, res) => {
 
   db.prepare("UPDATE shortcuts SET status = 'active' WHERE id = ?").run(req.params.id);
   res.json({ message: '恢复成功' });
+});
+
+router.get('/:id/versions', (req, res) => {
+  const db = getDb();
+  const versions = db.prepare(`
+    SELECT id, shortcut_id, url, version_note, created_at
+    FROM shortcut_versions
+    WHERE shortcut_id = ?
+    ORDER BY created_at DESC
+  `).all(req.params.id);
+
+  res.json({ versions });
+});
+
+router.post('/:id/versions', authRequired, (req, res) => {
+  const db = getDb();
+  const shortcut = db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(req.params.id);
+
+  if (!shortcut) {
+    return res.status(404).json({ error: '快捷指令不存在' });
+  }
+  if (shortcut.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: '无权更新该快捷指令' });
+  }
+
+  const { url, version_note } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: '请提供新的快捷指令链接' });
+  }
+  if (!isValidShortcutUrl(url)) {
+    return res.status(400).json({ error: '请输入有效的 iCloud 快捷指令链接' });
+  }
+
+  db.prepare('INSERT INTO shortcut_versions (shortcut_id, url, version_note) VALUES (?, ?, ?)')
+    .run(req.params.id, url, version_note || '');
+
+  db.prepare('UPDATE shortcuts SET file_url = ? WHERE id = ?')
+    .run(url, req.params.id);
+
+  const versions = db.prepare(`
+    SELECT id, shortcut_id, url, version_note, created_at
+    FROM shortcut_versions
+    WHERE shortcut_id = ?
+    ORDER BY created_at DESC
+  `).all(req.params.id);
+
+  res.json({ versions, message: '版本更新成功' });
+});
+
+router.get('/:id/similar', (req, res) => {
+  const db = getDb();
+  const shortcut = db.prepare('SELECT id, category FROM shortcuts WHERE id = ?').get(req.params.id);
+
+  if (!shortcut) {
+    return res.status(404).json({ error: '快捷指令不存在' });
+  }
+
+  const similar = db.prepare(`
+    SELECT s.*, u.username, u.avatar
+    FROM shortcuts s
+    LEFT JOIN users u ON s.user_id = u.id
+    WHERE s.category = ? AND s.id != ? AND s.status = 'active' AND (u.banned IS NULL OR u.banned = 0)
+    ORDER BY s.like_count DESC, s.created_at DESC
+    LIMIT 5
+  `).all(shortcut.category, req.params.id);
+
+  res.json({ shortcuts: similar });
 });
 
 router.get('/:id/download', (req, res) => {

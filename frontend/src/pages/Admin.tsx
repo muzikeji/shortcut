@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { AdminUser, Shortcut } from './types';
+import { CATEGORY_COLORS } from './types';
 
 export default function Admin() {
   const { user } = useAuth();
@@ -206,16 +207,6 @@ function ShortcutManagement() {
     }
   };
 
-  const categoryColors: Record<string, string> = {
-    '效率': 'bg-blue-100 text-blue-700',
-    '工具': 'bg-green-100 text-green-700',
-    '娱乐': 'bg-purple-100 text-purple-700',
-    '健康': 'bg-red-100 text-red-700',
-    '学习': 'bg-yellow-100 text-yellow-700',
-    '生活': 'bg-pink-100 text-pink-700',
-    '其他': 'bg-gray-100 text-gray-600',
-  };
-
   return (
     <div>
       <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5 mb-4 w-fit">
@@ -254,7 +245,7 @@ function ShortcutManagement() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{s.username}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[s.category] || categoryColors['其他']}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${(CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他']).bg} ${(CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他']).text}`}>
                         {s.category}
                       </span>
                     </td>
