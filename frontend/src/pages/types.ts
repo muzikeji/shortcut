@@ -2,6 +2,7 @@ export interface Shortcut {
   id: number;
   slug: string;
   color: string;
+  stats: string;
   title: string;
   description: string;
   category: string;

@@ -111,6 +111,10 @@ function initTables() {
   } catch {}
 
   try {
+    db.exec(`ALTER TABLE shortcuts ADD COLUMN stats TEXT DEFAULT ''`);
+  } catch {}
+
+  try {
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_shortcuts_slug ON shortcuts(slug)`);
   } catch {}
 
