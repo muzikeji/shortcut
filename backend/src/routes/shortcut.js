@@ -189,12 +189,16 @@ async function parseShortcutStats(shortcutUrl) {
     let minVersion = '';
     const rawVersion = wf.WFWorkflowMinimumClientVersion || wf.WFWorkflowMinimumSystemVersion;
     if (rawVersion != null) {
-      const v = String(rawVersion).split('.');
-      minVersion = 'iOS ' + v.slice(0, 2).join('.');
+      const num = Number(rawVersion);
+      if (!isNaN(num) && num >= 100 && !String(rawVersion).includes('.')) {
+        const major = Math.floor(num / 100);
+        const minor = num % 100;
+        minVersion = `iOS ${major}.${minor}`;
+      } else {
+        const v = String(rawVersion).split('.');
+        minVersion = 'iOS ' + v.slice(0, 2).join('.');
+      }
     }
-
-    // 调试：日志输出 bplist 顶层 key，排查未命中的字段
-    console.log('[stats debug] plist keys:', Object.keys(wf).filter(k => k.toLowerCase().includes('version') || k.toLowerCase().includes('min') || k.toLowerCase().includes('system') || k.toLowerCase().includes('import')));
 
     const detailActionNames = Array.from(new Set(actionNames.map(a => a.split('.').pop())));
 
