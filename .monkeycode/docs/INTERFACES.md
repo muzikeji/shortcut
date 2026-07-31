@@ -138,12 +138,15 @@
   "shortcuts": [
     {
       "id": 1,
+      "slug": "1785243074",
+      "color": "#3871DE",
+      "stats": "{\"actionCount\":134,\"size\":633651,\"permissions\":[\"打开应用\",\"文件\",\"照片\",\"通知\"],\"actionTypes\":[...]}",
       "title": "一键打开健康码",
       "description": "快速打开健康码页面",
       "category": "生活",
       "file_url": "https://www.icloud.com/shortcuts/abc123",
       "file_name": "",
-      "file_size": 0,
+      "file_size": 633651,
       "download_count": 42,
       "like_count": 15,
       "comment_count": 3,
@@ -165,7 +168,37 @@
 
 **认证**: authOptional
 
+`id` 参数既可以是自增数字 ID，也可以是 10 位数字时间戳 slug。后端 `idParam()` 逻辑：纯数字参数先按 ID 查询，未命中再按 slug 查询。
+
 **响应** (200): 返回单个 shortcut 对象（格式同列表项，不再包装）
+
+### POST /api/shortcuts/fetch-name -- 预取快捷指令元数据
+
+**认证**: 无
+
+发布页粘贴链接后调用，抓取快捷指令的真实名称、主题色和统计信息。
+
+**请求体**:
+```json
+{
+  "url": "string (必填, iCloud 快捷指令链接)"
+}
+```
+
+**响应** (200):
+```json
+{
+  "name": "安心记加班非月底结算版",
+  "color": "#3871DE",
+  "stats": {
+    "actionCount": 134,
+    "size": 633651,
+    "permissions": ["打开应用", "文件", "照片", "通知"]
+  }
+}
+```
+
+**错误**: 无效链接 (400), 无法获取名称 (404)
 
 ### POST /api/shortcuts -- 发布快捷指令
 
@@ -177,11 +210,15 @@
   "title": "string (必填)",
   "description": "string (可选)",
   "category": "string (可选, 默认 '其他')",
-  "url": "string (必填, iCloud 快捷指令链接)"
+  "url": "string (必填, iCloud 快捷指令链接)",
+  "slug": "string (可选, 10 位数字时间戳, 默认后端生成)",
+  "color": "string (可选, #RRGGBB 主题色)"
 }
 ```
 
 iCloud URL 格式要求: `https://www.icloud.com/shortcuts/[a-zA-Z0-9]+`
+
+发布时后端会再次调用 iCloud API 抓取元数据：**名称优先使用抓取到的真实名称**（前端传入的 title 作为兜底），color 优先使用前端传入值，否则用抓取值；同时下载 plist 解析统计信息写入 `file_size` 和 `stats` 字段。
 
 **响应** (201):
 ```json
@@ -231,7 +268,57 @@ iCloud URL 格式要求: `https://www.icloud.com/shortcuts/[a-zA-Z0-9]+`
 
 **认证**: 无
 
-将 `download_count` 加 1 后 302 重定向到 iCloud 快捷指令链接。
+将 `download_count` 加 1 后 302 重定向到 iCloud 快捷指令链接。`id` 支持数字 ID 或 slug。
+
+### GET /api/shortcuts/:id/versions -- 获取版本历史
+
+**认证**: 无
+
+**响应** (200):
+```json
+{
+  "versions": [
+    {
+      "id": 2,
+      "shortcut_id": 1,
+      "url": "https://www.icloud.com/shortcuts/def456",
+      "version_note": "修复了崩溃问题",
+      "created_at": "2024-01-02T00:00:00.000Z"
+    },
+    {
+      "id": 1,
+      "shortcut_id": 1,
+      "url": "https://www.icloud.com/shortcuts/abc123",
+      "version_note": "初始版本",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+### POST /api/shortcuts/:id/versions -- 更新版本
+
+**认证**: authRequired（作者或管理员）
+
+提交新的 iCloud 链接，插入版本记录并更新 `shortcuts.file_url`。
+
+**请求体**:
+```json
+{
+  "url": "string (必填, 新的 iCloud 链接)",
+  "version_note": "string (可选, 更新说明)"
+}
+```
+
+**响应** (200): 返回更新后的 versions 数组 + `{ "message": "版本更新成功" }`
+
+### GET /api/shortcuts/:id/similar -- 相似推荐
+
+**认证**: 无
+
+返回同分类下按点赞数排序的前 5 条活跃快捷指令（排除自身）。
+
+**响应** (200): `{ "shortcuts": [...] }`
 
 ---
 

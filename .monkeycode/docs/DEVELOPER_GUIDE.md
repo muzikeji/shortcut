@@ -140,7 +140,7 @@ server: {
 1. `backend/src/database.js` -- 在 `initTables()` 中添加 CREATE TABLE 语句
 2. 在对应路由文件中添加 CRUD 操作代码
 
-**注意**: 如果表已存在，better-sqlite3 使用 `IF NOT EXISTS` 保证幂等性不会重复创建，但不会自动执行 ALTER TABLE 添加新列。如需添加字段，需手动在 `initTables()` 中添加 `ALTER TABLE ... ADD COLUMN` 迁移语句。
+**注意**: 如果表已存在，better-sqlite3 使用 `IF NOT EXISTS` 保证幂等性不会重复创建，但不会自动执行 ALTER TABLE 添加新列。如需添加字段，需手动在 `initTables()` 中添加 `ALTER TABLE ... ADD COLUMN` 迁移语句（用 `try { db.exec(...) } catch {}` 包裹以忽略"列已存在"错误）。
 
 ### 修改数据库 Schema
 
@@ -164,17 +164,28 @@ db.exec(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`);
 当前生产服务器: `192.168.0.108` (Ubuntu 20.04 ARM64)
 
 ```bash
-# 在本地构建前端
-cd frontend && npm run build
+# 在服务器拉取最新代码
+cd ~/shortcut && git pull
 
-# 上传到服务器
-scp -r frontend/dist user@192.168.0.108:~/shortcut/frontend/
+# 重新构建前端（含 TypeScript 类型检查）
+cd ~/shortcut/frontend && npm install && npm run build
 
-# 在服务器重启后端
-ssh user@192.168.0.108 "cd ~/shortcut/backend && pm2 restart shortcut"
+# 重启后端
+cd ~/shortcut/backend && npm install && pm2 restart shortcut
 ```
 
+> **注意**: 前端生产构建会执行 `tsc -b` 类型检查，且启用了 `noUnusedLocals`。任何未使用的变量/导入都会导致构建失败（TS6133），修改前端代码后务必先本地验证 `npx tsc -b` 通过再提交。
+
 生产模式下 Express 自动检测并托管 `frontend/dist/` 静态文件，SPA 路由自动 fallback。
+
+### 元数据抓取与统计解析
+
+后端在发布快捷指令时通过 Apple 公开接口抓取元数据：
+
+1. **CloudKit API**: `GET https://www.icloud.com/shortcuts/api/records/{id}?locale=zh_CN`，返回指令名称（`fields.name.value`）、图标颜色（`fields.icon_color.value`，0xRRGGBBAA 数字）和指令文件下载地址（`fields.shortcut.value.downloadURL`，未加密 bplist）
+2. **plist 解析**: 下载指令文件后用 `bplist-parser` 解析，读取 `WFWorkflowActions` 数组统计操作步骤数，通过 `WFWorkflowActionIdentifier` 的动作映射到权限标签
+
+注意：`signedShortcut` 字段是 AEA1 加密容器无法解析，必须使用未加密的 `shortcut` 字段。抓取超时限制为 8 秒（元数据）/ 15 秒（统计），失败时静默降级（名称回退到用户输入、无颜色回退默认蓝、无统计不渲染表格）。
 
 ---
 
@@ -216,4 +227,5 @@ res.status(500).json({ error: '服务器内部错误' });
 
 - 使用 Tailwind CSS 原子类
 - 常用颜色变量通过 Tailwind 类名实现（如 `bg-blue-600`, `text-gray-400`）
-- 分类标签颜色在页面组件中通过 `categoryColors` 映射定义
+- 卡片、详情页按钮等元素的主题色来自快捷指令图标的 `color` 字段（`#RRGGBB`），通过内联 `style={{ color: theme }}`、`style={{ backgroundColor: theme }}` 应用，并配合透明度后缀生成浅色底（如 `${theme}1A`、`${theme}08`）；无颜色时回退默认蓝 `#3B82F6`
+- `CATEGORY_COLORS` 常量仍定义在 `types.ts` 但已被主题色方案取代，页面不再直接使用（注意：删了 import 即触发 TS6133）

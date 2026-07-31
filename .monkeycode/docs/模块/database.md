@@ -19,7 +19,7 @@ SQLite 数据库初始化和 Schema 定义模块。
 
 | 导出 | 说明 |
 |------|------|
-| `module.exports = db` | 导出已初始化并创建 Schema 的数据库实例（可直接调用 `db.prepare(...).run(...)`） |
+| `module.exports = { getDb }` | 导出 `getDb()` 工厂函数，首次调用时初始化连接和 Schema 并返回数据库实例（可调用 `db.prepare(...).run(...)`）。单例模式，后续调用返回同一实例 |
 
 ## 初始化流程
 
@@ -44,21 +44,25 @@ initTables();
 
 | 表名 | 用途 | 字段数 | 索引数 |
 |------|------|--------|--------|
-| `users` | 用户账号和资料 | 8 | 0 |
-| `shortcuts` | 快捷指令 | 13 | 1 (user_id) + 1 (created_at) |
+| `users` | 用户账号和资料 | 8 (id/username/email/password/avatar/bio/role/banned) | 0 |
+| `shortcuts` | 快捷指令 | 16 (id/slug/title/description/category/file_url/file_name/file_size/download_count/like_count/comment_count/user_id/created_at/status/color/stats) | 3 (user_id, created_at, slug UNIQUE) |
 | `likes` | 点赞记录 | 4 | 2 (shortcut_id, user_id) |
 | `comments` | 评论内容 | 5 | 1 (shortcut_id) |
+| `shortcut_versions` | 版本历史 | 5 (id/shortcut_id/url/version_note/created_at) | 1 (shortcut_id) |
 
 ## 历史迁移
 
-`initTables()` 中通过 `ALTER TABLE ... ADD COLUMN` 添加了以下字段：
+`initTables()` 中通过 `ALTER TABLE ... ADD COLUMN` 添加了以下字段（全部用 `try/catch` 包裹，忽略"列已存在"报错，保证幂等）：
 
+- `users.bio` -- 个性签名（默认 `''`）
 - `users.role` -- 用户角色（默认 `'user'`）
 - `users.banned` -- 封禁标记（默认 `0`）
-- `users.bio` -- 个性签名
 - `shortcuts.status` -- 状态标记（默认 `'active'`）
+- `shortcuts.slug` -- 10 位时间戳唯一标识（迁移后对旧数据回填：`created_at` 时间戳 + 4 位随机数）
+- `shortcuts.color` -- 图标主题色（默认 `''`，`#RRGGBB`）
+- `shortcuts.stats` -- 统计信息 JSON 字符串（默认 `''`，含 actionCount/size/permissions/actionTypes）
 
-这些迁移语句在每次启动时执行，因 SQLite 的 `ALTER TABLE ADD COLUMN` 在列已存在时会报错，当前实现未做错误忽略处理（better-sqlite3 的 `exec` 会抛出异常）。如需修复，可先用 `PRAGMA table_info` 检查列是否存在再执行。
+`slug` 列随后创建唯一索引 `idx_shortcuts_slug`，已有记录若 slug 为空则按 `created_at` 时间戳 + 4 位随机数回填。
 
 ## 依赖
 

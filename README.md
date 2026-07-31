@@ -167,11 +167,14 @@ pm2 restart shortcut
 
 ### 特色功能
 
+- **自动抓取真实名称与主题色**：发布时粘贴 iCloud 链接即自动识别快捷指令真实名称和图标颜色，卡片和详情页按主题色渲染
+- **统计信息展示**：详情页展示操作步骤数、文件大小、访问权限（发布时解析指令文件）
+- **时间戳 slug 链接**：每个快捷指令拥有 10 位秒级时间戳唯一标识，作品地址固定不变
+- **发布注释建议**：发布页顶部提供可复制的注释内容（发布者/来源/发布时间/作品地址），一键复制供粘贴到快捷指令
 - **版本更新**：发布者可提交新的 iCloud 链接更新快捷指令，浏览者可查看版本历史
 - **相似推荐**：详情页根据分类自动推荐 5 条相似快捷指令，大屏右侧展示、小屏下方展示
 - **评论折叠**：第 5 条评论后自动折叠，点击展开查看全部
 - **自适应布局**：首页/个人主页使用 CSS Grid auto-fill，从手机到超宽屏自适应列数
-- **分类主题色**：快捷指令卡片和详情页根据分类自动着色（蓝/绿/紫/红/黄/粉/灰）
 - **管理搜索**：管理后台支持按用户名/邮箱搜索用户，按标题/作者搜索分享
 
 ## API 接口
@@ -193,8 +196,9 @@ pm2 restart shortcut
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|:--:|
 | GET | `/api/shortcuts` | 列表（`?search=&sort=&page=&userId=`） | - |
-| GET | `/api/shortcuts/:id` | 详情 | - |
-| POST | `/api/shortcuts` | 发布（iCloud 链接） | ✓ |
+| GET | `/api/shortcuts/:id` | 详情（支持数字 ID 或时间戳 slug） | - |
+| POST | `/api/shortcuts/fetch-name` | 预取快捷指令名称/颜色/统计 | - |
+| POST | `/api/shortcuts` | 发布（iCloud 链接，可选 slug/color） | ✓ |
 | PUT | `/api/shortcuts/:id` | 编辑（标题/描述/分类） | ✓ |
 | DELETE | `/api/shortcuts/:id` | 删除（仅限作者） | ✓ |
 | PUT | `/api/shortcuts/:id/remove` | 下架（作者或管理员） | ✓ |
@@ -244,7 +248,7 @@ export JWT_SECRET="$(openssl rand -hex 32)"
 | 表 | 说明 |
 |------|------|
 | `users` | 用户（username/email/password/avatar/bio/role/banned） |
-| `shortcuts` | 快捷指令（title/description/category/file_url/status/计数） |
+| `shortcuts` | 快捷指令（title/description/category/file_url/slug/color/stats/status/计数） |
 | `shortcut_versions` | 版本历史（shortcut_id/url/version_note/created_at） |
 | `likes` | 点赞记录（shortcut_id/user_id, UNIQUE 约束） |
 | `comments` | 评论（shortcut_id/user_id/content） |

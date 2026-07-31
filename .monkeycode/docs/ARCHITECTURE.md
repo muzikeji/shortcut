@@ -6,6 +6,8 @@
 
 系统采用经典的前后端分离架构：React 前端通过 Vite 反向代理与 Express 后端通信，后端使用 SQLite 作为持久化存储。生产模式下后端同时托管前端静态资源，支持 SPA 路由。
 
+后端在发布快捷指令时会主动访问 Apple CloudKit API 抓取指令元数据（真实名称、图标主题色）并下载指令文件解析统计信息（操作步骤数、文件大小、访问权限），展示在详情页。每个快捷指令在发布页生成时即分配一个 10 位秒级时间戳 slug，作为固定不变的作品地址标识。
+
 ## 技术栈
 
 **语言与运行时**
@@ -20,11 +22,16 @@
 **后端框架**
 - Express 4.21
 - better-sqlite3（同步 SQLite 驱动）
+- bplist-parser（快捷指令二进制 plist 解析）
 
 **认证与安全**
 - jsonwebtoken（JWT HS256）
 - bcryptjs（密码哈希）
 - multer（文件上传）
+
+**外部服务**
+- Apple CloudKit API（`https://www.icloud.com/shortcuts/api/records/{id}`，抓取指令名称/图标颜色/文件地址）
+- Apple 快捷指令文件 CDN（`downloadURL`，下载 plist 用于统计解析）
 
 **数据存储**
 - SQLite（单文件数据库 `data/shortcuts.db`）
@@ -46,7 +53,7 @@ workspace/
 │   │   ├── database.js              # SQLite Schema 和数据迁移
 │   │   └── routes/
 │   │       ├── user.js              # 用户路由（注册/登录/资料/头像）
-│   │       ├── shortcut.js          # 快捷指令路由（CRUD/列表/下架/恢复）
+│   │       ├── shortcut.js          # 快捷指令路由（CRUD/元数据抓取/统计解析）
 │   │       ├── interact.js          # 互动路由（点赞/评论）
 │   │       └── admin.js             # 管理员路由（用户管理/分享管理）
 │   └── uploads/
@@ -102,10 +109,10 @@ workspace/
 **被依赖**: 首页、详情页（展示用户信息）
 
 ### 快捷指令子系统 (Shortcut)
-**目的**: 快捷指令的发布、浏览、编辑、下架/恢复、下载重定向
+**目的**: 快捷指令的发布、浏览、编辑、下架/恢复、下载重定向，以及发布时的元数据抓取（真实名称/主题色）和统计解析（步骤数/大小/权限）
 **位置**: `backend/src/routes/shortcut.js`, `frontend/src/pages/Home.tsx`, `Share.tsx`, `ShortcutDetail.tsx`
 **关键文件**: `shortcut.js`, `Share.tsx`, `ShortcutDetail.tsx`
-**依赖**: auth.js (创建/编辑/删除需认证), SQLite shortcuts 表
+**依赖**: auth.js (创建/编辑/删除需认证), SQLite shortcuts 表, bplist-parser (统计解析), Apple CloudKit API (元数据抓取)
 **被依赖**: 互动子系统（点赞和评论）
 
 ### 互动子系统 (Interaction)
@@ -148,6 +155,11 @@ flowchart LR
         FS["文件系统 (avatars/)"]
     end
 
+    subgraph External["外部服务"]
+        iCloud["Apple CloudKit API"]
+        CDN["快捷指令文件 CDN"]
+    end
+
     Frontend -->|"/api/* proxy"| Backend
     UserRoutes --> AuthMid
     ShortcutRoutes --> AuthMid
@@ -155,6 +167,8 @@ flowchart LR
     AdminRoutes --> AuthMid
     Backend --> SQLite
     UserRoutes --> FS
+    ShortcutRoutes -->|"元数据抓取"| iCloud
+    ShortcutRoutes -->|"plist 下载解析"| CDN
 ```
 
 ## 数据流
@@ -185,14 +199,25 @@ sequenceDiagram
     participant Client as 前端
     participant API as Express 路由
     participant Auth as authRequired
+    participant iCloud as Apple CloudKit API
+    participant CDN as 文件 CDN
     participant DB as SQLite
 
-    Client->>API: POST /api/shortcuts (Authorization)
+    Client->>Client: 进入发布页即生成 10 位时间戳 slug
+    Client->>API: POST /api/shortcuts/fetch-name (链接)
+    API->>iCloud: GET /shortcuts/api/records/{id}
+    iCloud-->>API: 名称/图标颜色/下载URL
+    API->>CDN: GET downloadURL (plist)
+    CDN-->>API: 快捷指令二进制文件
+    API->>API: bplist 解析 WFWorkflowActions
+    API-->>Client: {name, color, stats}
+
+    Client->>API: POST /api/shortcuts (slug, color, url)
     API->>Auth: 校验 JWT Token
     Auth->>DB: 查询用户状态（封禁检查）
     Auth-->>API: req.user
     API->>API: 校验 iCloud URL 格式
-    API->>DB: 检查 URL 去重
+    API->>DB: 检查 URL 去重 / slug 唯一性
     API->>DB: INSERT INTO shortcuts
     DB-->>API: new shortcut
     API-->>Client: 201 + {shortcut}
@@ -229,3 +254,6 @@ sequenceDiagram
 4. **手动维护计数** -- `like_count` 和 `comment_count` 在 shortcuts 表中手动维护而非查询计算，提升列表查询性能
 5. **前端状态管理使用 React Context** -- 项目规模小，无需 Redux/Zustand 等外部状态库，AuthContext 满足全部认证状态需求
 6. **生产模式后端托管前端** -- Express 在检测到 `frontend/dist/` 目录时自动托管静态文件，SPA 路由 fallback，省去 Nginx 部署
+7. **10 位秒级时间戳 slug** -- 快捷指令在进入发布页时即生成 `Math.floor(Date.now()/1000)` 作为 slug 并固定，作品地址 `origin/shortcut/{slug}` 可提前复制到注释；同秒冲突时前端捕获错误自动重新生成。数字 slug 与自增 ID 通过 `idParam()` 兼容（数字参数先查 ID，未命中再查 slug）
+8. **主题色抓取而非固定分类色** -- `icon_color` 字段是 0xRRGGBBAA 数字，解码为 `#RRGGBB` 后存库，应用到卡片标题、分类徽章、下载按钮、评论头像等元素；无颜色时回退默认蓝色 `#3B82F6`
+9. **统计信息存库而非每次实时解析** -- 发布时一次性解析 plist 得到步骤数/大小/权限，以 JSON 存入 `shortcuts.stats`，详情页直接读取渲染，避免每次访问都请求 Apple CDN

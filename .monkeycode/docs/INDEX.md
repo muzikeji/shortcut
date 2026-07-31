@@ -29,6 +29,7 @@
 | `frontend/src/pages/` | 前端页面组件 | [README](./模块/frontend-pages.md) |
 | `frontend/src/components/` | 共享 UI 组件 | [README](./模块/frontend-components.md) |
 | `frontend/src/AuthContext.tsx` | 前端认证状态管理 | [README](./模块/auth-context.md) |
+| `backend/node_modules/bplist-parser` | 快捷指令 plist 解析库 | - |
 
 ---
 
@@ -40,6 +41,25 @@
 | [用户 (User)](./专有概念/User.md) | 系统用户，含角色（普通用户/管理员）和封禁状态 |
 | [点赞 (Like)](./专有概念/Like.md) | 用户对快捷指令的点赞交互（toggle 模式） |
 | [评论 (Comment)](./专有概念/Comment.md) | 用户对快捷指令的评论 |
+| [快捷指令 slug](./专有概念/Shortcut-slug.md) | 10 位秒级时间戳标识符，用于生成固定不变的详情页 URL |
+| [快捷指令统计](./专有概念/Shortcut-stats.md) | 操作步骤数、文件大小、访问权限（解析 plist 获取） |
+
+---
+
+## 最新动态
+
+### v1.5.0（最新）- 快捷指令统计与主题色抓取
+- **自动抓取快捷指令真实名称**：发布时通过 iCloud API 获取真实名称，无需手动输入
+- **主题色应用**：抓取快捷指令图标颜色，应用到卡片、详情页按钮等元素
+- **统计表格**：详情页展示操作步骤数、文件大小、访问权限（基于 plist 解析）
+- **纯数字时间戳 slug**：10 位秒级时间戳（如 `1785243074`），兼容 ID 查询
+- **注释建议卡片**：发布页顶部添加注释建议，支持一键复制供粘贴到快捷指令
+
+### 历史版本
+- v1.4.0 - 版本更新与相似推荐
+- v1.3.0 - 分类主题色与评论折叠
+- v1.2.0 - 管理后台
+- v1.1.0 - 自适应网格布局
 
 ---
 
@@ -90,8 +110,19 @@ cd frontend && npm run lint
 | `backend/src/index.js` | 后端入口，Express 应用装配 |
 | `backend/src/database.js` | 数据库初始化和 Schema 定义 |
 | `backend/src/auth.js` | JWT 认证中间件 |
+| `backend/src/routes/shortcut.js` | 快捷指令 CRUD + 元数据抓取 + plist 解析 |
 | `frontend/src/main.tsx` | 前端入口 |
 | `frontend/src/App.tsx` | 路由配置和全局布局 |
 | `frontend/src/api.ts` | 前端 API 调用封装 |
 | `frontend/src/AuthContext.tsx` | 前端认证状态管理 |
 | `frontend/vite.config.ts` | Vite 构建配置和反向代理 |
+
+### 核心功能入口
+
+| 功能 | 后端路由 | 前端页面 |
+|------|---------|---------|
+| 发布快捷指令 | `POST /api/shortcuts` | `Share.tsx` |
+| 获取元数据 | `POST /api/shortcuts/fetch-name` | `Share.tsx` |
+| 详情页展示 | `GET /api/shortcuts/:id` | `ShortcutDetail.tsx` |
+| 主题色应用 | - | `Home.tsx`, `UserProfile.tsx`, `ShortcutDetail.tsx` |
+| 统计信息 | `parseShortcutStats()` | `ShortcutDetail.tsx` |
