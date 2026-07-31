@@ -138,7 +138,8 @@ export default function ShortcutDetail() {
       await api.removeShortcut(shortcut.id);
       setShortcut({ ...shortcut, status: 'removed' });
     } catch (e: any) {
-      alert(e.message);
+      console.error('下架失败', e);
+      alert(e.message || '下架失败，请重试');
     } finally {
       setActionLoading(false);
     }
@@ -151,7 +152,8 @@ export default function ShortcutDetail() {
       await api.restoreShortcut(shortcut.id);
       setShortcut({ ...shortcut, status: 'active' });
     } catch (e: any) {
-      alert(e.message);
+      console.error('恢复失败', e);
+      alert(e.message || '恢复失败，请重试');
     } finally {
       setActionLoading(false);
     }
