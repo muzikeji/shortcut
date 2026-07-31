@@ -186,11 +186,24 @@ async function parseShortcutStats(shortcutUrl) {
       if (perm) permissions.add(perm);
     });
 
+    let minVersion = '';
+    if (wf.WFWorkflowMinimumSystemVersion) {
+      const v = String(wf.WFWorkflowMinimumSystemVersion).split('.');
+      minVersion = 'iOS ' + v.slice(0, 2).join('.');
+    }
+
+    const detailActionNames = Array.from(new Set(actionNames.map(a => a.split('.').pop())));
+
     return {
       actionCount: actions.length,
       size: buf.length,
       permissions: [...permissions],
       actionTypes: actionNames,
+      name: wf.WFWorkflowName || '',
+      minVersion,
+      workflowTypes: Array.isArray(wf.WFWorkflowTypes) ? wf.WFWorkflowTypes : [],
+      importQuestions: Array.isArray(wf.WFWorkflowImportQuestions) ? wf.WFWorkflowImportQuestions.length : 0,
+      distinctActionCount: detailActionNames.length,
     };
   } catch (e) {
     return null;

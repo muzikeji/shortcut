@@ -385,48 +385,73 @@ export default function ShortcutDetail() {
             </div>
 
             {(() => {
-              let stats: { actionCount?: number; size?: number; permissions?: string[] } | null = null;
+              let stats: {
+                actionCount?: number;
+                size?: number;
+                permissions?: string[];
+                name?: string;
+                minVersion?: string;
+                workflowTypes?: string[];
+                importQuestions?: number;
+                distinctActionCount?: number;
+              } | null = null;
               try {
                 if (shortcut.stats) stats = JSON.parse(shortcut.stats);
               } catch { stats = null; }
               if (!stats) return null;
               return (
-                <div className="mt-5 bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-400">操作步骤</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-400">文件大小</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-400">访问权限</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{stats.actionCount ?? '-'} 步</td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">{stats.size ? (stats.size / 1024).toFixed(1) + ' KB' : '-'}</td>
-                        <td className="px-4 py-3">
-                          {(stats.permissions && stats.permissions.length > 0) ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {stats.permissions.map(p => (
-                                <span
-                                  key={p}
-                                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: `${theme}14`, color: theme }}
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={PERMISSION_ICONS[p] || 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'} />
-                                  </svg>
-                                  {p}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-xs">无</span>
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="mt-5 bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="divide-y divide-gray-100">
+                    <div className="flex items-center py-3">
+                      <span className="text-xs font-medium text-gray-400 w-24 shrink-0">操作步骤</span>
+                      <span className="text-sm text-gray-800 font-medium">{stats.actionCount ?? '-'} 步</span>
+                    </div>
+                    <div className="flex items-center py-3">
+                      <span className="text-xs font-medium text-gray-400 w-24 shrink-0">文件大小</span>
+                      <span className="text-sm text-gray-800 font-medium">{stats.size ? (stats.size / 1024).toFixed(1) + ' KB' : '-'}</span>
+                    </div>
+                    {stats.minVersion && (
+                      <div className="flex items-center py-3">
+                        <span className="text-xs font-medium text-gray-400 w-24 shrink-0">最低系统</span>
+                        <span className="text-sm text-gray-800 font-medium">{stats.minVersion}</span>
+                      </div>
+                    )}
+                    {stats.distinctActionCount != null && (
+                      <div className="flex items-center py-3">
+                        <span className="text-xs font-medium text-gray-400 w-24 shrink-0">动作种类</span>
+                        <span className="text-sm text-gray-800 font-medium">{stats.distinctActionCount} 种</span>
+                      </div>
+                    )}
+                    <div className="flex py-3">
+                      <span className="text-xs font-medium text-gray-400 w-24 shrink-0 pt-0.5">访问权限</span>
+                      <div>
+                        {(stats.permissions && stats.permissions.length > 0) ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {stats.permissions.map(p => (
+                              <span
+                                key={p}
+                                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: `${theme}14`, color: theme }}
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={PERMISSION_ICONS[p] || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'} />
+                                </svg>
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">无</span>
+                        )}
+                      </div>
+                    </div>
+                    {stats.importQuestions != null && stats.importQuestions > 0 && (
+                      <div className="flex items-center py-3">
+                        <span className="text-xs font-medium text-gray-400 w-24 shrink-0">导入问题</span>
+                        <span className="text-sm text-gray-800 font-medium">{stats.importQuestions} 个</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })()}

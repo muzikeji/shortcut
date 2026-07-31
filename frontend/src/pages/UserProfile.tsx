@@ -447,7 +447,11 @@ export default function UserProfile() {
           {shortcuts.map(s => {
             const theme = /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#3B82F6';
             return (
-            <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+            <div
+              key={s.id}
+              onClick={() => navigate(`/shortcut/${s.slug}`)}
+              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
+            >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${theme}1A`, color: theme }}>
@@ -464,11 +468,9 @@ export default function UserProfile() {
                 </span>
               </div>
 
-              <Link to={`/shortcut/${s.slug}`}>
-                <h3 className="font-semibold text-gray-800 mb-1 hover:underline line-clamp-1" style={{ color: theme }}>
-                  {s.title}
-                </h3>
-              </Link>
+              <h3 className="font-semibold text-gray-800 mb-1 line-clamp-1" style={{ color: theme }}>
+                {s.title}
+              </h3>
               <p className="text-sm text-gray-500 line-clamp-2 mb-4 min-h-[2.5rem]">
                 {s.description || '暂无描述'}
               </p>
@@ -477,7 +479,7 @@ export default function UserProfile() {
                 <span className="text-xs text-gray-400">{s.download_count} 次下载</span>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => handleLike(s.id)}
+                    onClick={(e) => { e.stopPropagation(); handleLike(s.id); }}
                     className={`flex items-center gap-1 text-sm ${s.liked ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
                   >
                     <svg className="w-4 h-4" fill={s.liked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -485,7 +487,11 @@ export default function UserProfile() {
                     </svg>
                     {s.like_count}
                   </button>
-                  <Link to={`/shortcut/${s.slug}`} className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-500">
+                  <Link
+                    to={`/shortcut/${s.slug}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-500"
+                  >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
@@ -493,6 +499,7 @@ export default function UserProfile() {
                   </Link>
                   <a
                     href={api.getDownloadUrl(s.id)}
+                    onClick={(e) => e.stopPropagation()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-medium hover:underline"
@@ -503,14 +510,14 @@ export default function UserProfile() {
                   {isOwner && (
                     s.status === 'removed' ? (
                       <button
-                        onClick={() => handleRestoreShortcut(s.id)}
+                        onClick={(e) => { e.stopPropagation(); handleRestoreShortcut(s.id); }}
                         className="text-green-600 text-xs hover:text-green-800"
                       >
                         恢复
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleRemoveShortcut(s.id)}
+                        onClick={(e) => { e.stopPropagation(); handleRemoveShortcut(s.id); }}
                         className="text-red-500 text-xs hover:text-red-700"
                       >
                         下架
