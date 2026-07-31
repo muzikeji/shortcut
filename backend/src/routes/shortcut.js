@@ -11,13 +11,14 @@ function isValidShortcutUrl(url) {
 }
 
 function generateSlug() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return Date.now().toString() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
 }
 
 function idParam(db, value) {
   const numeric = /^\d+$/.test(value);
   if (numeric) {
-    return db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(parseInt(value));
+    const byId = db.prepare('SELECT * FROM shortcuts WHERE id = ?').get(parseInt(value));
+    if (byId) return byId;
   }
   return db.prepare('SELECT * FROM shortcuts WHERE slug = ?').get(value);
 }

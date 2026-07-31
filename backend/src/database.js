@@ -117,7 +117,7 @@ function initTables() {
     const updateTx = db.transaction((rows) => {
       rows.forEach(row => {
         const ts = new Date(row.created_at).getTime();
-        const slug = ts.toString(36) + Math.random().toString(36).slice(2, 6);
+        const slug = ts.toString() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
         update.run(slug, row.id);
       });
     });

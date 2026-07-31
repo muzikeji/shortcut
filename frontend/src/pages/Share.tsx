@@ -13,7 +13,7 @@ function formatNow() {
 }
 
 function generateSlug() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return Date.now().toString() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
 }
 
 export default function Share() {
