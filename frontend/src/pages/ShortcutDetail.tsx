@@ -857,10 +857,12 @@ function CommentItem({
     <div>
       {/* 主评论 */}
       <div className="flex gap-3">
-        <AvatarImg src={comment.avatar} name={comment.username} theme={theme} size="w-8 h-8" />
+        <Link to={`/user/${comment.user_id}`} className="shrink-0">
+          <AvatarImg src={comment.avatar} name={comment.username} theme={theme} size="w-8 h-8" />
+        </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-medium text-gray-800">{comment.username}</span>
+            <Link to={`/user/${comment.user_id}`} className="text-sm font-medium text-gray-800 hover:text-blue-600">{comment.username}</Link>
             <span className="text-xs text-gray-400">
               {new Date(comment.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
@@ -901,10 +903,12 @@ function CommentItem({
             return (
               <div key={r.id}>
                 <div className="flex gap-2.5">
-                  <AvatarImg src={r.avatar} name={r.username} theme={theme} size="w-6 h-6" />
+                  <Link to={`/user/${r.user_id}`} className="shrink-0">
+                    <AvatarImg src={r.avatar} name={r.username} theme={theme} size="w-6 h-6" />
+                  </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 flex-wrap leading-tight">
-                      <span className="text-xs font-medium text-gray-800">{r.username}</span>
+                      <Link to={`/user/${r.user_id}`} className="text-xs font-medium text-gray-800 hover:text-blue-600">{r.username}</Link>
                       {replyParentUsername && (
                         <>
                           <span className="text-xs text-gray-400">回复</span>
