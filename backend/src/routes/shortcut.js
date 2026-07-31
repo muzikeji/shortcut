@@ -11,7 +11,7 @@ function isValidShortcutUrl(url) {
 }
 
 function generateSlug() {
-  return Date.now().toString() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return String(Math.floor(Date.now() / 1000));
 }
 
 function idParam(db, value) {

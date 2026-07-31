@@ -13,7 +13,7 @@ function formatNow() {
 }
 
 function generateSlug() {
-  return Date.now().toString() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return String(Math.floor(Date.now() / 1000));
 }
 
 export default function Share() {
@@ -85,6 +85,9 @@ export default function Share() {
       navigate(`/shortcut/${data.shortcut.slug}`);
     } catch (err: any) {
       setError(err.message);
+      if (/标识已被使用|重复/i.test(err.message)) {
+        setSlug(generateSlug());
+      }
     } finally {
       setLoading(false);
     }
