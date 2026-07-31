@@ -19,9 +19,19 @@ function extractShortcutId(url) {
   return m ? m[1] : '';
 }
 
-async function fetchShortcutName(url) {
+function decodeIconColor(value) {
+  if (typeof value !== 'number') return null;
+  const r = (value >>> 24) & 0xff;
+  const g = (value >>> 16) & 0xff;
+  const b = (value >>> 8) & 0xff;
+  const a = value & 0xff;
+  if (a === 0) return null;
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+async function fetchShortcutMeta(url) {
   const id = extractShortcutId(url);
-  if (!id) return '';
+  if (!id) return null;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -30,12 +40,16 @@ async function fetchShortcutName(url) {
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!res.ok) return '';
+    if (!res.ok) return null;
     const data = await res.json();
     const name = data?.fields?.name?.value;
-    return typeof name === 'string' ? name.trim() : '';
+    const color = decodeIconColor(data?.fields?.icon_color?.value);
+    return {
+      name: typeof name === 'string' ? name.trim() : '',
+      color,
+    };
   } catch (e) {
-    return '';
+    return null;
   }
 }
 
@@ -44,11 +58,11 @@ router.post('/fetch-name', async (req, res) => {
   if (!url || !isValidShortcutUrl(url)) {
     return res.status(400).json({ error: '无效的 iCloud 快捷指令链接' });
   }
-  const name = await fetchShortcutName(url);
-  if (!name) {
+  const meta = await fetchShortcutMeta(url);
+  if (!meta || !meta.name) {
     return res.status(404).json({ error: '未能获取快捷指令名称' });
   }
-  res.json({ name });
+  res.json({ name: meta.name, color: meta.color });
 });
 
 function idParam(db, value) {
@@ -155,8 +169,8 @@ router.get('/:id', authOptional, (req, res) => {
   res.json({ shortcut: { ...shortcut, liked } });
 });
 
-router.post('/', authRequired, (req, res) => {
-  const { title, description, category, url, slug } = req.body;
+router.post('/', authRequired, async (req, res) => {
+  const { title, description, category, url, slug, color } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: '请输入快捷指令名称' });
@@ -184,16 +198,21 @@ router.post('/', authRequired, (req, res) => {
     return res.status(400).json({ error: '该快捷指令标识已被使用，请重试' });
   }
 
+  const meta = await fetchShortcutMeta(url);
+
+  const finalColor = /^#[0-9a-fA-F]{6}$/.test(color || '') ? color : (meta?.color || '');
+
   const result = db.prepare(`
-    INSERT INTO shortcuts (slug, title, description, category, file_url, file_name, file_size, user_id)
-    VALUES (?, ?, ?, ?, ?, '', 0, ?)
+    INSERT INTO shortcuts (slug, title, description, category, file_url, file_name, file_size, user_id, color)
+    VALUES (?, ?, ?, ?, ?, '', 0, ?, ?)
   `).run(
     finalSlug,
-    title,
+    meta?.name || title,
     description || '',
     category || '其他',
     url,
-    req.user.id
+    req.user.id,
+    finalColor
   );
 
   db.prepare('INSERT INTO shortcut_versions (shortcut_id, url, version_note) VALUES (?, ?, ?)')

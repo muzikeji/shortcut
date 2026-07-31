@@ -83,8 +83,8 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
-    }),
-  createShortcut: (body: { title: string; description: string; category: string; url: string; slug?: string }) =>
+    }) as Promise<{ name: string; color?: string | null }>,
+  createShortcut: (body: { title: string; description: string; category: string; url: string; slug?: string; color?: string }) =>
     request('/shortcuts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

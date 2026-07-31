@@ -1,6 +1,7 @@
 export interface Shortcut {
   id: number;
   slug: string;
+  color: string;
   title: string;
   description: string;
   category: string;

@@ -5,8 +5,7 @@ import { useAuth } from '../AuthContext';
 import type { Shortcut } from './types';
 import { CATEGORY_COLORS } from './types';
 
-export default function Home() {
-  const [searchParams] = useSearchParams();
+export default function Home() {  const [searchParams] = useSearchParams();
   const search = searchParams.get('search') || '';
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
   const [sort, setSort] = useState('latest');
@@ -70,10 +69,14 @@ export default function Home() {
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
           {shortcuts.map(s => {
             const colors = CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他'];
+            const theme = /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#3B82F6';
             return (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: `${theme}1A`, color: theme }}
+                >
                   {s.category}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -82,7 +85,7 @@ export default function Home() {
               </div>
 
               <Link to={`/shortcut/${s.slug}`}>
-                <h2 className="font-semibold text-gray-800 mb-1 hover:text-blue-600 line-clamp-1">
+                <h2 className="font-semibold text-gray-800 mb-1 hover:underline line-clamp-1" style={{ color: theme }}>
                   {s.title}
                 </h2>
               </Link>
@@ -92,7 +95,7 @@ export default function Home() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <Link to={`/user/${s.user_id}`} className="text-blue-500 hover:text-blue-700">{s.username}</Link>
+                  <Link to={`/user/${s.user_id}`} style={{ color: theme }} className="hover:underline">{s.username}</Link>
                   <span>{s.download_count} 次下载</span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -115,7 +118,8 @@ export default function Home() {
                     href={api.getDownloadUrl(s.id)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`text-${colors.accent}-600 text-sm hover:text-${colors.accent}-800 font-medium`}
+                    className="text-sm font-medium hover:underline"
+                    style={{ color: theme }}
                   >
                     获取
                   </a>

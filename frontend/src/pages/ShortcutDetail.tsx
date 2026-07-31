@@ -8,25 +8,6 @@ import { CATEGORY_COLORS } from './types';
 const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'];
 const COMMENT_PREVIEW_COUNT = 5;
 
-const CATEGORY_ACCENT: Record<string, string> = {
-  '效率': 'bg-blue-600 hover:bg-blue-700',
-  '工具': 'bg-green-600 hover:bg-green-700',
-  '娱乐': 'bg-purple-600 hover:bg-purple-700',
-  '健康': 'bg-red-600 hover:bg-red-700',
-  '学习': 'bg-yellow-500 hover:bg-yellow-600',
-  '生活': 'bg-pink-600 hover:bg-pink-700',
-  '其他': 'bg-gray-600 hover:bg-gray-700',
-};
-
-const CATEGORY_ACCENT_TEXT: Record<string, string> = {
-  '效率': 'text-blue-600 hover:text-blue-800',
-  '工具': 'text-green-600 hover:text-green-800',
-  '娱乐': 'text-purple-600 hover:text-purple-800',
-  '健康': 'text-red-600 hover:text-red-800',
-  '学习': 'text-yellow-600 hover:text-yellow-800',
-  '生活': 'text-pink-600 hover:text-pink-800',
-  '其他': 'text-gray-600 hover:text-gray-800',
-};
 
 export default function ShortcutDetail() {
   const { id } = useParams<{ id: string }>();
@@ -225,6 +206,7 @@ export default function ShortcutDetail() {
   }
 
   const colors = CATEGORY_COLORS[shortcut.category] || CATEGORY_COLORS['其他'];
+  const theme = /^#[0-9a-fA-F]{6}$/.test(shortcut.color || '') ? shortcut.color : '#3B82F6';
   const previewComments = comments.slice(0, COMMENT_PREVIEW_COUNT);
   const remainingCount = comments.length - COMMENT_PREVIEW_COUNT;
 
@@ -258,7 +240,10 @@ export default function ShortcutDetail() {
         &larr; 返回列表
       </Link>
 
-      <div className={`bg-white rounded-xl border ${colors.border} p-6 mb-6 ${colors.light}`}>
+      <div
+        className="bg-white rounded-xl border p-6 mb-6"
+        style={{ borderColor: `${theme}40`, backgroundColor: `${theme}08` }}
+      >
         {editing ? (
           <div className="space-y-3">
             {editError && (
@@ -314,7 +299,7 @@ export default function ShortcutDetail() {
         ) : (
           <>
             <div className="flex items-center gap-2 mb-3">
-              <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${theme}1A`, color: theme }}>
                 {shortcut.category}
               </span>
               <span className="text-xs text-gray-400">
@@ -331,7 +316,7 @@ export default function ShortcutDetail() {
             <p className="text-gray-600 mb-4">{shortcut.description || '暂无描述'}</p>
 
             <div className="flex items-center text-sm text-gray-500 mb-4 gap-4">
-              <span>分享者: <Link to={`/user/${shortcut.user_id}`} className="text-blue-600 hover:text-blue-800">{shortcut.username}</Link></span>
+              <span>分享者: <Link to={`/user/${shortcut.user_id}`} className="hover:underline" style={{ color: theme }}>{shortcut.username}</Link></span>
             </div>
 
             <div className="flex items-center text-sm text-gray-500 mb-5">
@@ -346,7 +331,8 @@ export default function ShortcutDetail() {
                 href={api.getDownloadUrl(shortcut.id)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`text-white px-6 py-2 rounded-lg font-medium inline-flex items-center gap-2 ${CATEGORY_ACCENT[shortcut.category] || CATEGORY_ACCENT['其他']}`}
+                className="text-white px-6 py-2 rounded-lg font-medium inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: theme }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -389,7 +375,8 @@ export default function ShortcutDetail() {
               setShowVersionForm(!showVersionForm);
               setVersionError('');
             }}
-            className={`text-sm font-medium ${CATEGORY_ACCENT_TEXT[shortcut.category] || CATEGORY_ACCENT_TEXT['其他']}`}
+            className="text-sm font-medium hover:underline"
+            style={{ color: theme }}
           >
             更新版本
           </button>
@@ -544,7 +531,10 @@ export default function ShortcutDetail() {
             <div className="space-y-4">
               {(showAllComments ? comments : previewComments).map(c => (
                 <div key={c.id} className="flex gap-3">
-                  <div className={`w-8 h-8 ${colors.bg} ${colors.text} rounded-full flex items-center justify-center text-sm font-medium shrink-0`}>
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 text-white"
+                    style={{ backgroundColor: theme }}
+                  >
                     {c.username?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -28,6 +28,7 @@ export default function Share() {
   const [slug, setSlug] = useState(generateSlug());
   const [publishedAt, setPublishedAt] = useState(formatNow());
   const [shortcutName, setShortcutName] = useState('');
+  const [shortcutColor, setShortcutColor] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,7 +41,7 @@ export default function Share() {
     if (!isValidUrl(url.trim())) return;
     let cancelled = false;
     api.fetchShortcutName(url.trim())
-      .then(data => { if (!cancelled && data.name) setShortcutName(data.name); })
+      .then(data => { if (!cancelled && data.name) { setShortcutName(data.name); setShortcutColor(data.color || ''); } })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [url]);
@@ -103,6 +104,7 @@ export default function Share() {
         category,
         url: url.trim(),
         slug,
+        color: shortcutColor,
       });
       navigate(`/shortcut/${data.shortcut.slug}`);
     } catch (err: any) {

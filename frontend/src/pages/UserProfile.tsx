@@ -447,11 +447,12 @@ export default function UserProfile() {
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
           {shortcuts.map(s => {
             const colors = CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他'];
+            const theme = /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#3B82F6';
             return (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${theme}1A`, color: theme }}>
                     {s.category}
                   </span>
                   {s.status === 'removed' && (
@@ -466,7 +467,7 @@ export default function UserProfile() {
               </div>
 
               <Link to={`/shortcut/${s.slug}`}>
-                <h3 className="font-semibold text-gray-800 mb-1 hover:text-blue-600 line-clamp-1">
+                <h3 className="font-semibold text-gray-800 mb-1 hover:underline line-clamp-1" style={{ color: theme }}>
                   {s.title}
                 </h3>
               </Link>
@@ -496,7 +497,8 @@ export default function UserProfile() {
                     href={api.getDownloadUrl(s.id)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 text-sm hover:text-blue-800 font-medium"
+                    className="text-sm font-medium hover:underline"
+                    style={{ color: theme }}
                   >
                     获取
                   </a>
