@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { Shortcut } from './types';
-import { CATEGORY_COLORS } from './types';
 
 interface UserProfile {
   id: number;
@@ -446,7 +445,6 @@ export default function UserProfile() {
       ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
           {shortcuts.map(s => {
-            const colors = CATEGORY_COLORS[s.category] || CATEGORY_COLORS['其他'];
             const theme = /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#3B82F6';
             return (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">

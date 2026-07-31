@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 import type { Shortcut, Comment, ShortcutVersion } from './types';
-import { CATEGORY_COLORS } from './types';
 
 const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'];
 const COMMENT_PREVIEW_COUNT = 5;
@@ -233,7 +232,6 @@ export default function ShortcutDetail() {
     return <div className="text-center py-20 text-gray-400">快捷指令不存在</div>;
   }
 
-  const colors = CATEGORY_COLORS[shortcut.category] || CATEGORY_COLORS['其他'];
   const theme = /^#[0-9a-fA-F]{6}$/.test(shortcut.color || '') ? shortcut.color : '#3B82F6';
   const previewComments = comments.slice(0, COMMENT_PREVIEW_COUNT);
   const remainingCount = comments.length - COMMENT_PREVIEW_COUNT;
