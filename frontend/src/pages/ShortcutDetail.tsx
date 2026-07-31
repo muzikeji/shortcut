@@ -45,6 +45,7 @@ export default function ShortcutDetail() {
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [refreshLoading, setRefreshLoading] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -156,6 +157,22 @@ export default function ShortcutDetail() {
       alert(e.message || '恢复失败，请重试');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleRefreshStats = async () => {
+    if (!shortcut) return;
+    setRefreshLoading(true);
+    try {
+      const data = await api.refreshStats(shortcut.id);
+      if (data.stats) {
+        setShortcut({ ...shortcut, stats: JSON.stringify(data.stats) });
+      }
+    } catch (e: any) {
+      console.error('刷新统计失败', e);
+      alert(e.message || '统计刷新失败，请重试');
+    } finally {
+      setRefreshLoading(false);
     }
   };
 
@@ -403,6 +420,28 @@ export default function ShortcutDetail() {
               if (!stats) return null;
               return (
                 <div className="mt-5 bg-white rounded-xl border border-gray-200 p-4">
+                  {(isOwner || isAdmin) && (
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">统计信息</span>
+                      <button
+                        onClick={handleRefreshStats}
+                        disabled={refreshLoading}
+                        className="text-xs text-blue-500 hover:text-blue-600 disabled:text-gray-300 flex items-center gap-1"
+                      >
+                        {refreshLoading ? (
+                          <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        )}
+                        刷新统计
+                      </button>
+                    </div>
+                  )}
                   <div className="divide-y divide-gray-100">
                     <div className="flex items-center py-3">
                       <span className="text-xs font-medium text-gray-400 w-24 shrink-0">操作步骤</span>
@@ -412,18 +451,14 @@ export default function ShortcutDetail() {
                       <span className="text-xs font-medium text-gray-400 w-24 shrink-0">文件大小</span>
                       <span className="text-sm text-gray-800 font-medium">{stats.size ? (stats.size / 1024).toFixed(1) + ' KB' : '-'}</span>
                     </div>
-                    {stats.minVersion && (
-                      <div className="flex items-center py-3">
-                        <span className="text-xs font-medium text-gray-400 w-24 shrink-0">最低系统</span>
-                        <span className="text-sm text-gray-800 font-medium">{stats.minVersion}</span>
-                      </div>
-                    )}
-                    {stats.distinctActionCount != null && (
-                      <div className="flex items-center py-3">
-                        <span className="text-xs font-medium text-gray-400 w-24 shrink-0">动作种类</span>
-                        <span className="text-sm text-gray-800 font-medium">{stats.distinctActionCount} 种</span>
-                      </div>
-                    )}
+                    <div className="flex items-center py-3">
+                      <span className="text-xs font-medium text-gray-400 w-24 shrink-0">最低系统</span>
+                      <span className="text-sm text-gray-800 font-medium">{stats.minVersion || '-'}</span>
+                    </div>
+                    <div className="flex items-center py-3">
+                      <span className="text-xs font-medium text-gray-400 w-24 shrink-0">动作种类</span>
+                      <span className="text-sm text-gray-800 font-medium">{stats.distinctActionCount != null ? `${stats.distinctActionCount} 种` : '-'}</span>
+                    </div>
                     <div className="flex py-3">
                       <span className="text-xs font-medium text-gray-400 w-24 shrink-0 pt-0.5">访问权限</span>
                       <div>
@@ -447,12 +482,10 @@ export default function ShortcutDetail() {
                         )}
                       </div>
                     </div>
-                    {stats.importQuestions != null && stats.importQuestions > 0 && (
-                      <div className="flex items-center py-3">
-                        <span className="text-xs font-medium text-gray-400 w-24 shrink-0">导入问题</span>
-                        <span className="text-sm text-gray-800 font-medium">{stats.importQuestions} 个</span>
-                      </div>
-                    )}
+                    <div className="flex items-center py-3">
+                      <span className="text-xs font-medium text-gray-400 w-24 shrink-0">导入问题</span>
+                      <span className="text-sm text-gray-800 font-medium">{stats.importQuestions != null ? `${stats.importQuestions} 个` : '-'}</span>
+                    </div>
                   </div>
                 </div>
               );

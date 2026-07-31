@@ -484,6 +484,30 @@ router.put('/:id/restore', authRequired, (req, res) => {
   res.json({ message: '恢复成功' });
 });
 
+router.post('/:id/refresh-stats', authRequired, async (req, res) => {
+  const db = getDb();
+  const shortcut = idParam(db, req.params.id);
+
+  if (!shortcut) {
+    return res.status(404).json({ error: '快捷指令不存在' });
+  }
+  if (shortcut.user_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: '无权刷新该快捷指令的统计信息' });
+  }
+  if (!shortcut.file_url) {
+    return res.status(400).json({ error: '该快捷指令缺少链接，无法刷新统计' });
+  }
+
+  const stats = await parseShortcutStats(shortcut.file_url);
+  if (!stats) {
+    return res.status(500).json({ error: '统计信息抓取失败，请稍后重试' });
+  }
+
+  const statsJson = JSON.stringify(stats);
+  db.prepare('UPDATE shortcuts SET stats = ? WHERE id = ?').run(statsJson, shortcut.id);
+  res.json({ stats });
+});
+
 router.get('/:id/versions', (req, res) => {
   const db = getDb();
   const target = idParam(db, req.params.id);

@@ -102,6 +102,8 @@ export const api = {
     request(`/shortcuts/${id}/remove`, { method: 'PUT' }),
   restoreShortcut: (id: number) =>
     request(`/shortcuts/${id}/restore`, { method: 'PUT' }),
+  refreshStats: (id: number) =>
+    request(`/shortcuts/${id}/refresh-stats`, { method: 'POST' }),
   getDownloadUrl: (id: number) => `${API}/shortcuts/${id}/download`,
 
   getVersions: (shortcutId: number) => request(`/shortcuts/${shortcutId}/versions`),
