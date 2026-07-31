@@ -14,6 +14,43 @@ function generateSlug() {
   return String(Math.floor(Date.now() / 1000));
 }
 
+function extractShortcutId(url) {
+  const m = url.match(/icloud\.com\/shortcuts\/([a-zA-Z0-9]+)/i);
+  return m ? m[1] : '';
+}
+
+async function fetchShortcutName(url) {
+  const id = extractShortcutId(url);
+  if (!id) return '';
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(`https://www.icloud.com/shortcuts/api/records/${id}?locale=zh_CN`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return '';
+    const data = await res.json();
+    const name = data?.fields?.name?.value;
+    return typeof name === 'string' ? name.trim() : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+router.post('/fetch-name', async (req, res) => {
+  const { url } = req.body;
+  if (!url || !isValidShortcutUrl(url)) {
+    return res.status(400).json({ error: '无效的 iCloud 快捷指令链接' });
+  }
+  const name = await fetchShortcutName(url);
+  if (!name) {
+    return res.status(404).json({ error: '未能获取快捷指令名称' });
+  }
+  res.json({ name });
+});
+
 function idParam(db, value) {
   const numeric = /^\d+$/.test(value);
   if (numeric) {

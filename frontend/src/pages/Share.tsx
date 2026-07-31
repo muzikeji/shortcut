@@ -16,11 +16,6 @@ function generateSlug() {
   return String(Math.floor(Date.now() / 1000));
 }
 
-function extractShortcutId(url: string) {
-  const m = url.match(/icloud\.com\/shortcuts\/([a-zA-Z0-9]+)/i);
-  return m ? m[1] : '';
-}
-
 export default function Share() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -32,6 +27,7 @@ export default function Share() {
   const [copied, setCopied] = useState(false);
   const [slug, setSlug] = useState(generateSlug());
   const [publishedAt, setPublishedAt] = useState(formatNow());
+  const [shortcutName, setShortcutName] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -39,6 +35,15 @@ export default function Share() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isValidUrl(url.trim())) return;
+    let cancelled = false;
+    api.fetchShortcutName(url.trim())
+      .then(data => { if (!cancelled && data.name) setShortcutName(data.name); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [url]);
 
   const commentText = () =>
     `发布者：${user?.username || ''}\n来源：捷径源©版权归作者所有\n发布时间：${publishedAt}\n作品地址：${window.location.origin}/shortcut/${slug}`;
@@ -85,16 +90,15 @@ export default function Share() {
       return;
     }
 
-    const autoTitle = extractShortcutId(url.trim());
-    if (!autoTitle) {
-      setError('无法从链接中识别快捷指令名称，请检查链接');
+    if (!shortcutName) {
+      setError('正在获取快捷指令名称，请稍候重试');
       return;
     }
 
     setLoading(true);
     try {
       const data = await api.createShortcut({
-        title: autoTitle,
+        title: shortcutName,
         description: description.trim(),
         category,
         url: url.trim(),
@@ -193,6 +197,11 @@ export default function Share() {
           <p className="text-xs text-gray-400 mt-1">
             在 iOS 快捷指令 App 中分享快捷指令，选择"拷贝 iCloud 链接"，然后粘贴到此处
           </p>
+          {isValidUrl(url.trim()) && (
+            <p className="text-xs mt-1 text-gray-500">
+              {shortcutName ? '已自动识别快捷指令名称' : '正在自动识别快捷指令名称...'}
+            </p>
+          )}
         </div>
 
         <button
