@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
 
 const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'];
 const ICLOUD_REGEX = /^https?:\/\/(www\.)?icloud\.com\/shortcuts\/[a-zA-Z0-9]+$/i;
+
+function formatNow() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 
 export default function Share() {
   const { user } = useAuth();
@@ -15,6 +21,26 @@ export default function Share() {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [now, setNow] = useState(formatNow());
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(formatNow()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const commentText = () =>
+    `发布者：${user?.username || ''}\n来源：捷径源©版权归作者所有\n发布时间：${now}\n作品地址：（发布后自动生成）`;
+
+  const handleCopyComment = async () => {
+    try {
+      await navigator.clipboard.writeText(commentText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      setError('复制失败，请手动选择文本复制');
+    }
+  };
 
   if (!user) {
     navigate('/login');
@@ -48,7 +74,7 @@ export default function Share() {
         category,
         url: url.trim(),
       });
-      navigate(`/shortcut/${data.shortcut.id}`);
+      navigate(`/shortcut/${data.shortcut.slug}`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -121,6 +147,34 @@ export default function Share() {
           )}
           <p className="text-xs text-gray-400 mt-1">
             在 iOS 快捷指令 App 中分享快捷指令，选择"拷贝 iCloud 链接"，然后粘贴到此处
+          </p>
+        </div>
+
+        {/* 注释建议 */}
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-semibold text-blue-700">建议</span>
+          </div>
+          <p className="text-xs text-blue-600 mb-3 leading-relaxed">
+            发布前建议在快捷指令最上方添加一个「注释」动作，注明发布者与版权信息。点击下方按钮复制内容，粘贴到快捷指令的「注释」动作中即可。
+          </p>
+
+          <div className="bg-white rounded-lg border border-blue-100 p-3 mb-3 font-mono text-xs text-gray-700 whitespace-pre-line">
+            {commentText()}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCopyComment}
+            className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${copied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+          >
+            {copied ? '已复制 ✓' : '复制注释内容'}
+          </button>
+          <p className="text-[10px] text-blue-400 mt-2 text-center">
+            发布时间随当前时间每秒更新，作品地址为发布后生成的详情页链接
           </p>
         </div>
 
