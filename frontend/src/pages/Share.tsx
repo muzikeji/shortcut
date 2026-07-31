@@ -23,14 +23,23 @@ export default function Share() {
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(formatNow());
   const [copied, setCopied] = useState(false);
+  const [publishedSlug, setPublishedSlug] = useState('');
+  const [publishedAt, setPublishedAt] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(formatNow()), 1000);
+    const timer = setInterval(() => {
+      if (!publishedSlug) setNow(formatNow());
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [publishedSlug]);
 
-  const commentText = () =>
-    `发布者：${user?.username || ''}\n来源：捷径源©版权归作者所有\n发布时间：${now}\n作品地址：（发布后自动生成）`;
+  const commentText = () => {
+    const workUrl = publishedSlug
+      ? `${window.location.origin}/shortcut/${publishedSlug}`
+      : '（点击「发布快捷指令」后自动生成）';
+    return `发布者：${user?.username || ''}\n来源：捷径源©版权归作者所有\n发布时间：${publishedAt || now}\n作品地址：${workUrl}`;
+  };
 
   const handleCopyComment = async () => {
     try {
@@ -67,16 +76,25 @@ export default function Share() {
     }
 
     setLoading(true);
+    setGenerating(true);
+    const ts = Date.now();
+    const tsSlug = ts.toString(36) + Math.random().toString(36).slice(2, 6);
+    setPublishedSlug(tsSlug);
+    setPublishedAt(formatNow());
     try {
       const data = await api.createShortcut({
         title: title.trim(),
         description: description.trim(),
         category,
         url: url.trim(),
+        slug: tsSlug,
       });
       navigate(`/shortcut/${data.shortcut.slug}`);
     } catch (err: any) {
       setError(err.message);
+      setPublishedSlug('');
+      setPublishedAt('');
+      setGenerating(false);
     } finally {
       setLoading(false);
     }
@@ -159,7 +177,7 @@ export default function Share() {
             <span className="text-sm font-semibold text-blue-700">建议</span>
           </div>
           <p className="text-xs text-blue-600 mb-3 leading-relaxed">
-            发布前建议在快捷指令最上方添加一个「注释」动作，注明发布者与版权信息。点击下方按钮复制内容，粘贴到快捷指令的「注释」动作中即可。
+            发布前建议在快捷指令最上方添加一个「注释」动作，注明发布者与版权信息。点击下方按钮复制内容，粘贴到快捷指令的「注释」动作中即可。点击「发布快捷指令」时会锁定发布时间与作品地址。
           </p>
 
           <div className="bg-white rounded-lg border border-blue-100 p-3 mb-3 font-mono text-xs text-gray-700 whitespace-pre-line">

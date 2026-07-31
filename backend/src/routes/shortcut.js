@@ -118,7 +118,7 @@ router.get('/:id', authOptional, (req, res) => {
 });
 
 router.post('/', authRequired, (req, res) => {
-  const { title, description, category, url } = req.body;
+  const { title, description, category, url, slug } = req.body;
 
   if (!title) {
     return res.status(400).json({ error: '请输入快捷指令名称' });
@@ -137,11 +137,20 @@ router.post('/', authRequired, (req, res) => {
     return res.status(400).json({ error: '该快捷指令已被分享' });
   }
 
+  const finalSlug = slug || generateSlug();
+  if (!/^[a-z0-9]+$/i.test(finalSlug)) {
+    return res.status(400).json({ error: '无效的快捷指令标识' });
+  }
+  const slugExists = db.prepare('SELECT id FROM shortcuts WHERE slug = ?').get(finalSlug);
+  if (slugExists) {
+    return res.status(400).json({ error: '该快捷指令标识已被使用，请重试' });
+  }
+
   const result = db.prepare(`
     INSERT INTO shortcuts (slug, title, description, category, file_url, file_name, file_size, user_id)
     VALUES (?, ?, ?, ?, ?, '', 0, ?)
   `).run(
-    generateSlug(),
+    finalSlug,
     title,
     description || '',
     category || '其他',

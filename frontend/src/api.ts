@@ -78,7 +78,7 @@ export const api = {
     return request(`/shortcuts?${query.toString()}`);
   },
   getShortcut: (idOrSlug: number | string) => request(`/shortcuts/${idOrSlug}`),
-  createShortcut: (body: { title: string; description: string; category: string; url: string }) =>
+  createShortcut: (body: { title: string; description: string; category: string; url: string; slug?: string }) =>
     request('/shortcuts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
