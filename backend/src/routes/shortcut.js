@@ -498,7 +498,12 @@ router.post('/:id/refresh-stats', authRequired, async (req, res) => {
     return res.status(400).json({ error: '该快捷指令缺少链接，无法刷新统计' });
   }
 
-  const stats = await parseShortcutStats(shortcut.file_url);
+  const meta = await fetchShortcutMeta(shortcut.file_url);
+  if (!meta || !meta.shortcutUrl) {
+    return res.status(500).json({ error: '未能获取快捷指令下载地址，请检查链接是否仍然有效' });
+  }
+
+  const stats = await parseShortcutStats(meta.shortcutUrl);
   if (!stats) {
     return res.status(500).json({ error: '统计信息抓取失败，请稍后重试' });
   }
