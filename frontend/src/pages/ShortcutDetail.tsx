@@ -45,7 +45,7 @@ export default function ShortcutDetail() {
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: number; username: string } | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
@@ -102,7 +102,7 @@ export default function ShortcutDetail() {
     }
   };
 
-  const commentTree = useMemo(() => {
+  const { commentTree, commentMap } = useMemo(() => {
     const map: Record<number, Comment> = {};
     const roots: Comment[] = [];
     for (const c of comments) {
@@ -116,7 +116,7 @@ export default function ShortcutDetail() {
         roots.push(node);
       }
     }
-    return roots;
+    return { commentTree: roots, commentMap: map };
   }, [comments]);
 
   const handleComment = async (e: React.FormEvent) => {
@@ -710,7 +710,8 @@ export default function ShortcutDetail() {
                   replyTo={replyTo}
                   replyText={replyText}
                   replyLoading={replyLoading}
-                  onReply={(id) => { setReplyTo(replyTo === id ? null : id); setReplyText(''); }}
+                  commentMap={commentMap}
+                  onReply={(target) => { setReplyTo(target); if (!target) setReplyText(''); }}
                   onReplyTextChange={setReplyText}
                   onSubmitReply={handleReply}
                   onDelete={handleDeleteComment}
@@ -759,17 +760,35 @@ export default function ShortcutDetail() {
   );
 }
 
+interface ReplyTarget {
+  id: number;
+  username: string;
+}
+
 interface CommentItemProps {
   comment: Comment;
   theme: string;
   user: { id: number; role?: string } | null;
-  replyTo: number | null;
+  replyTo: ReplyTarget | null;
   replyText: string;
   replyLoading: boolean;
-  onReply: (id: number) => void;
+  commentMap: Record<number, Comment>;
+  onReply: (target: ReplyTarget | null) => void;
   onReplyTextChange: (text: string) => void;
   onSubmitReply: (parentId: number) => void;
   onDelete: (commentId: number) => void;
+  depth?: number;
+}
+
+function AvatarImg({ src, name, theme, size }: { src?: string; name: string; theme: string; size: string }) {
+  if (src) {
+    return <img src={src} className={`${size} rounded-full object-cover shrink-0`} />;
+  }
+  return (
+    <div className={`${size} rounded-full flex items-center justify-center text-white shrink-0`} style={{ backgroundColor: theme, fontSize: size === 'w-8 h-8' ? '14px' : '12px' }}>
+      {name?.[0]?.toUpperCase() || '?'}
+    </div>
+  );
 }
 
 function CommentItem({
@@ -779,32 +798,45 @@ function CommentItem({
   replyTo,
   replyText,
   replyLoading,
+  commentMap,
   onReply,
   onReplyTextChange,
   onSubmitReply,
   onDelete,
+  depth = 0,
 }: CommentItemProps) {
+  const parentUsername = comment.parent_id ? commentMap[comment.parent_id]?.username : null;
+  const avatarSize = depth === 0 ? 'w-8 h-8' : 'w-7 h-7';
+
   return (
     <div>
       <div className="flex gap-3">
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 text-white"
-          style={{ backgroundColor: theme }}
-        >
-          {comment.username?.[0]?.toUpperCase() || '?'}
-        </div>
+        <AvatarImg
+          src={comment.avatar}
+          name={comment.username}
+          theme={theme}
+          size={avatarSize}
+        />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span className="text-sm font-medium text-gray-800">{comment.username}</span>
+            {parentUsername && (
+              <span className="text-xs text-gray-400">
+                <svg className="w-3 h-3 inline-block mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                @{parentUsername}
+              </span>
+            )}
             <span className="text-xs text-gray-400">
-              {new Date(comment.created_at).toLocaleString('zh-CN')}
+              {new Date(comment.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           <p className="text-sm text-gray-600 break-words">{comment.content}</p>
           <div className="flex items-center gap-3 mt-1">
             {user && (
               <button
-                onClick={() => onReply(comment.id)}
+                onClick={() => onReply(replyTo?.id === comment.id ? null : { id: comment.id, username: comment.username })}
                 className="text-xs text-gray-400 hover:text-blue-500"
               >
                 回复
@@ -822,18 +854,18 @@ function CommentItem({
         </div>
       </div>
 
-      {replyTo === comment.id && (
+      {replyTo?.id === comment.id && (
         <div className="ml-11 mt-2 mb-1">
           <textarea
             value={replyText}
             onChange={e => onReplyTextChange(e.target.value)}
-            placeholder={`回复 ${comment.username}...`}
+            placeholder={`回复 @${comment.username}...`}
             className="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
             rows={2}
           />
           <div className="flex justify-end gap-2 mt-1.5">
             <button
-              onClick={() => onReply(comment.id)}
+              onClick={() => onReply(null)}
               className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700"
             >
               取消
@@ -850,33 +882,23 @@ function CommentItem({
       )}
 
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-11 mt-3 space-y-3 pl-4 border-l-2 border-gray-100">
+        <div className="ml-11 mt-3 space-y-3">
           {comment.replies.map(r => (
-            <div key={r.id} className="flex gap-2.5">
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 text-white"
-                style={{ backgroundColor: theme }}
-              >
-                {r.username?.[0]?.toUpperCase() || '?'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-medium text-gray-800">{r.username}</span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(r.created_at).toLocaleString('zh-CN')}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 break-words">{r.content}</p>
-                {user?.id === r.user_id && (
-                  <button
-                    onClick={() => onDelete(r.id)}
-                    className="text-xs text-gray-400 hover:text-red-500 mt-0.5"
-                  >
-                    删除
-                  </button>
-                )}
-              </div>
-            </div>
+            <CommentItem
+              key={r.id}
+              comment={r}
+              theme={theme}
+              user={user}
+              replyTo={replyTo}
+              replyText={replyText}
+              replyLoading={replyLoading}
+              commentMap={commentMap}
+              onReply={onReply}
+              onReplyTextChange={onReplyTextChange}
+              onSubmitReply={onSubmitReply}
+              onDelete={onDelete}
+              depth={depth + 1}
+            />
           ))}
         </div>
       )}
