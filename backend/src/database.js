@@ -34,6 +34,7 @@ function initTables() {
 
     CREATE TABLE IF NOT EXISTS shortcuts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       category TEXT DEFAULT '其他',
@@ -100,6 +101,28 @@ function initTables() {
   try {
     db.exec(`ALTER TABLE shortcuts ADD COLUMN status TEXT DEFAULT 'active'`);
   } catch {}
+
+  try {
+    db.exec(`ALTER TABLE shortcuts ADD COLUMN slug TEXT`);
+  } catch {}
+
+  try {
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_shortcuts_slug ON shortcuts(slug)`);
+  } catch {}
+
+  // 为已有记录生成 slug
+  const existing = db.prepare('SELECT id, created_at FROM shortcuts WHERE slug IS NULL').all();
+  if (existing.length > 0) {
+    const update = db.prepare('UPDATE shortcuts SET slug = ? WHERE id = ?');
+    const updateTx = db.transaction((rows) => {
+      rows.forEach(row => {
+        const ts = new Date(row.created_at).getTime();
+        const slug = ts.toString(36) + Math.random().toString(36).slice(2, 6);
+        update.run(slug, row.id);
+      });
+    });
+    updateTx(existing);
+  }
 }
 
 module.exports = { getDb };

@@ -59,14 +59,15 @@ export default function ShortcutDetail() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([
-      api.getShortcut(Number(id)),
-      api.getComments(Number(id)),
-      api.getVersions(Number(id)),
-      api.getSimilar(Number(id)),
-    ])
-      .then(([shortcutData, commentData, versionData, similarData]) => {
-        setShortcut(shortcutData.shortcut);
+    api.getShortcut(id)
+      .then(async (shortcutData) => {
+        const shortcut = shortcutData.shortcut;
+        setShortcut(shortcut);
+        const [commentData, versionData, similarData] = await Promise.all([
+          api.getComments(shortcut.id),
+          api.getVersions(shortcut.id),
+          api.getSimilar(shortcut.id),
+        ]);
         setComments(commentData.comments);
         setVersions(versionData.versions);
         setSimilar(similarData.shortcuts);
@@ -237,7 +238,7 @@ export default function ShortcutDetail() {
           {similar.map(s => (
             <Link
               key={s.id}
-              to={`/shortcut/${s.id}`}
+              to={`/shortcut/${s.slug}`}
               className="block hover:bg-gray-50 -mx-2 px-2 py-2 rounded-lg transition-colors"
             >
               <p className="text-sm font-medium text-gray-800 line-clamp-1">{s.title}</p>
@@ -338,6 +339,47 @@ export default function ShortcutDetail() {
                 <span className="text-gray-400">链接: </span>
                 {shortcut.file_url}
               </span>
+            </div>
+
+            {/* 注释风格信息面板 */}
+            <div className={`rounded-xl border ${colors.border} bg-white p-4 mb-5`}>
+              <div className="flex items-center gap-1.5 mb-3">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+                <span className="text-sm font-semibold text-gray-800">注释</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400 shrink-0 w-16">发布者</span>
+                  <Link to={`/user/${shortcut.user_id}`} className="text-blue-600 hover:text-blue-800 break-all">
+                    {shortcut.username}
+                  </Link>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400 shrink-0 w-16">来源/版权</span>
+                  <span className="text-gray-600 break-all">
+                    {shortcut.username} 所有，仅供学习交流使用
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400 shrink-0 w-16">发布时间</span>
+                  <span className="text-gray-600">
+                    {new Date(shortcut.created_at).toLocaleString('zh-CN')}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400 shrink-0 w-16">获取链接</span>
+                  <a
+                    href={api.getDownloadUrl(shortcut.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 break-all"
+                  >
+                    {window.location.origin}/shortcut/{shortcut.slug}
+                  </a>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">

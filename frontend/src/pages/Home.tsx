@@ -81,7 +81,7 @@ export default function Home() {
                 </span>
               </div>
 
-              <Link to={`/shortcut/${s.id}`}>
+              <Link to={`/shortcut/${s.slug}`}>
                 <h2 className="font-semibold text-gray-800 mb-1 hover:text-blue-600 line-clamp-1">
                   {s.title}
                 </h2>
@@ -105,7 +105,7 @@ export default function Home() {
                     </svg>
                     {s.like_count}
                   </button>
-                  <Link to={`/shortcut/${s.id}`} className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-500">
+                  <Link to={`/shortcut/${s.slug}`} className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-500">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>

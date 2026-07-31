@@ -77,7 +77,7 @@ export const api = {
     if (params.includeRemoved) query.set('includeRemoved', '1');
     return request(`/shortcuts?${query.toString()}`);
   },
-  getShortcut: (id: number) => request(`/shortcuts/${id}`),
+  getShortcut: (idOrSlug: number | string) => request(`/shortcuts/${idOrSlug}`),
   createShortcut: (body: { title: string; description: string; category: string; url: string }) =>
     request('/shortcuts', {
       method: 'POST',
