@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
@@ -45,6 +45,9 @@ export default function ShortcutDetail() {
   const [loading, setLoading] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyLoading, setReplyLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
 
   const [editing, setEditing] = useState(false);
@@ -99,6 +102,23 @@ export default function ShortcutDetail() {
     }
   };
 
+  const commentTree = useMemo(() => {
+    const map: Record<number, Comment> = {};
+    const roots: Comment[] = [];
+    for (const c of comments) {
+      map[c.id] = { ...c, replies: [] };
+    }
+    for (const c of comments) {
+      const node = map[c.id];
+      if (c.parent_id && map[c.parent_id]) {
+        map[c.parent_id].replies!.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+    return roots;
+  }, [comments]);
+
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -120,12 +140,33 @@ export default function ShortcutDetail() {
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    if (!shortcut) return;
+  const handleReply = async (parentId: number) => {
+    if (!user) {
+      alert('请先登录后再评论');
+      return;
+    }
+    if (!replyText.trim() || !shortcut) return;
+
+    setReplyLoading(true);
     try {
-      await api.deleteComment(shortcut.id, commentId);
-      setComments(comments.filter(c => c.id !== commentId));
-      setShortcut({ ...shortcut, comment_count: shortcut.comment_count - 1 });
+      const data = await api.addComment(shortcut.id, replyText.trim(), parentId);
+      setComments([data.comment, ...comments]);
+      setShortcut({ ...shortcut, comment_count: shortcut.comment_count + 1 });
+      setReplyText('');
+      setReplyTo(null);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!shortcut || !confirm('确定要删除该评论吗？')) return;
+    try {
+      const data = await api.deleteComment(shortcut.id, commentId);
+      setComments(comments.filter(c => c.id !== commentId && c.parent_id !== commentId));
+      setShortcut({ ...shortcut, comment_count: shortcut.comment_count - (1 + (data.deleted_replies || 0)) });
     } catch (e: any) {
       alert(e.message);
     }
@@ -252,8 +293,6 @@ export default function ShortcutDetail() {
   }
 
   const theme = /^#[0-9a-fA-F]{6}$/.test(shortcut.color || '') ? shortcut.color : '#3B82F6';
-  const previewComments = comments.slice(0, COMMENT_PREVIEW_COUNT);
-  const remainingCount = comments.length - COMMENT_PREVIEW_COUNT;
 
   const similarSection = (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -662,42 +701,30 @@ export default function ShortcutDetail() {
             <p className="text-center text-gray-400 text-sm py-4">暂无评论</p>
           ) : (
             <div className="space-y-4">
-              {(showAllComments ? comments : previewComments).map(c => (
-                <div key={c.id} className="flex gap-3">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 text-white"
-                    style={{ backgroundColor: theme }}
-                  >
-                    {c.username?.[0]?.toUpperCase() || '?'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-gray-800">{c.username}</span>
-                      <span className="text-xs text-gray-400">
-                        {new Date(c.created_at).toLocaleString('zh-CN')}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 break-words">{c.content}</p>
-                    {user?.id === c.user_id && (
-                      <button
-                        onClick={() => handleDeleteComment(c.id)}
-                        className="text-xs text-gray-400 hover:text-red-500 mt-1"
-                      >
-                        删除
-                      </button>
-                    )}
-                  </div>
-                </div>
+              {(showAllComments ? commentTree : commentTree.slice(0, COMMENT_PREVIEW_COUNT)).map(c => (
+                <CommentItem
+                  key={c.id}
+                  comment={c}
+                  theme={theme}
+                  user={user}
+                  replyTo={replyTo}
+                  replyText={replyText}
+                  replyLoading={replyLoading}
+                  onReply={(id) => { setReplyTo(replyTo === id ? null : id); setReplyText(''); }}
+                  onReplyTextChange={setReplyText}
+                  onSubmitReply={handleReply}
+                  onDelete={handleDeleteComment}
+                />
               ))}
-              {!showAllComments && remainingCount > 0 && (
+              {!showAllComments && commentTree.length > COMMENT_PREVIEW_COUNT && (
                 <button
                   onClick={() => setShowAllComments(true)}
                   className="w-full text-center text-sm text-blue-600 hover:text-blue-800 py-2"
                 >
-                  展开剩余 {remainingCount} 条评论
+                  展开剩余 {commentTree.length - COMMENT_PREVIEW_COUNT} 条评论
                 </button>
               )}
-              {showAllComments && comments.length > COMMENT_PREVIEW_COUNT && (
+              {showAllComments && commentTree.length > COMMENT_PREVIEW_COUNT && (
                 <button
                   onClick={() => setShowAllComments(false)}
                   className="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2"
@@ -728,6 +755,131 @@ export default function ShortcutDetail() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface CommentItemProps {
+  comment: Comment;
+  theme: string;
+  user: { id: number; role?: string } | null;
+  replyTo: number | null;
+  replyText: string;
+  replyLoading: boolean;
+  onReply: (id: number) => void;
+  onReplyTextChange: (text: string) => void;
+  onSubmitReply: (parentId: number) => void;
+  onDelete: (commentId: number) => void;
+}
+
+function CommentItem({
+  comment,
+  theme,
+  user,
+  replyTo,
+  replyText,
+  replyLoading,
+  onReply,
+  onReplyTextChange,
+  onSubmitReply,
+  onDelete,
+}: CommentItemProps) {
+  return (
+    <div>
+      <div className="flex gap-3">
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 text-white"
+          style={{ backgroundColor: theme }}
+        >
+          {comment.username?.[0]?.toUpperCase() || '?'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-medium text-gray-800">{comment.username}</span>
+            <span className="text-xs text-gray-400">
+              {new Date(comment.created_at).toLocaleString('zh-CN')}
+            </span>
+          </div>
+          <p className="text-sm text-gray-600 break-words">{comment.content}</p>
+          <div className="flex items-center gap-3 mt-1">
+            {user && (
+              <button
+                onClick={() => onReply(comment.id)}
+                className="text-xs text-gray-400 hover:text-blue-500"
+              >
+                回复
+              </button>
+            )}
+            {user?.id === comment.user_id && (
+              <button
+                onClick={() => onDelete(comment.id)}
+                className="text-xs text-gray-400 hover:text-red-500"
+              >
+                删除
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {replyTo === comment.id && (
+        <div className="ml-11 mt-2 mb-1">
+          <textarea
+            value={replyText}
+            onChange={e => onReplyTextChange(e.target.value)}
+            placeholder={`回复 ${comment.username}...`}
+            className="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
+            rows={2}
+          />
+          <div className="flex justify-end gap-2 mt-1.5">
+            <button
+              onClick={() => onReply(comment.id)}
+              className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700"
+            >
+              取消
+            </button>
+            <button
+              onClick={() => onSubmitReply(comment.id)}
+              disabled={replyLoading || !replyText.trim()}
+              className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+            >
+              {replyLoading ? '提交中...' : '回复'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="ml-11 mt-3 space-y-3 pl-4 border-l-2 border-gray-100">
+          {comment.replies.map(r => (
+            <div key={r.id} className="flex gap-2.5">
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 text-white"
+                style={{ backgroundColor: theme }}
+              >
+                {r.username?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-medium text-gray-800">{r.username}</span>
+                  <span className="text-xs text-gray-400">
+                    {new Date(r.created_at).toLocaleString('zh-CN')}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 break-words">{r.content}</p>
+                {user?.id === r.user_id && (
+                  <button
+                    onClick={() => onDelete(r.id)}
+                    className="text-xs text-gray-400 hover:text-red-500 mt-0.5"
+                  >
+                    删除
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

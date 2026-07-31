@@ -49,7 +49,7 @@ router.get('/:shortcutId/comments', authOptional, (req, res) => {
 router.post('/:shortcutId/comments', authRequired, (req, res) => {
   const db = getDb();
   const { shortcutId } = req.params;
-  const { content } = req.body;
+  const { content, parent_id } = req.body;
 
   if (!content || !content.trim()) {
     return res.status(400).json({ error: '请输入评论内容' });
@@ -60,8 +60,16 @@ router.post('/:shortcutId/comments', authRequired, (req, res) => {
     return res.status(404).json({ error: '快捷指令不存在' });
   }
 
-  const result = db.prepare('INSERT INTO comments (shortcut_id, user_id, content) VALUES (?, ?, ?)')
-    .run(shortcutId, req.user.id, content.trim());
+  if (parent_id != null) {
+    const parent = db.prepare('SELECT id FROM comments WHERE id = ? AND shortcut_id = ?')
+      .get(parent_id, shortcutId);
+    if (!parent) {
+      return res.status(404).json({ error: '被回复的评论不存在' });
+    }
+  }
+
+  const result = db.prepare('INSERT INTO comments (shortcut_id, user_id, content, parent_id) VALUES (?, ?, ?, ?)')
+    .run(shortcutId, req.user.id, content.trim(), parent_id || null);
 
   db.prepare('UPDATE shortcuts SET comment_count = comment_count + 1 WHERE id = ?').run(shortcutId);
 
@@ -89,10 +97,14 @@ router.delete('/:shortcutId/comments/:commentId', authRequired, (req, res) => {
     return res.status(403).json({ error: '只能删除自己的评论' });
   }
 
+  const replyCount = db.prepare('SELECT COUNT(*) as count FROM comments WHERE parent_id = ?')
+    .get(commentId).count;
+  db.prepare('DELETE FROM comments WHERE parent_id = ?').run(commentId);
   db.prepare('DELETE FROM comments WHERE id = ?').run(commentId);
-  db.prepare('UPDATE shortcuts SET comment_count = comment_count - 1 WHERE id = ?').run(shortcutId);
+  db.prepare('UPDATE shortcuts SET comment_count = comment_count - ? WHERE id = ?')
+    .run(1 + replyCount, shortcutId);
 
-  res.json({ message: '删除成功' });
+  res.json({ message: '删除成功', deleted_replies: replyCount });
 });
 
 module.exports = router;

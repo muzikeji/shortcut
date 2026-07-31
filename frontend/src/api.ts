@@ -120,11 +120,11 @@ export const api = {
     request(`/shortcuts/${shortcutId}/like`, { method: 'POST' }),
   getComments: (shortcutId: number) =>
     request(`/shortcuts/${shortcutId}/comments`),
-  addComment: (shortcutId: number, content: string) =>
+  addComment: (shortcutId: number, content: string, parentId?: number) =>
     request(`/shortcuts/${shortcutId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, parent_id: parentId || null }),
     }),
   deleteComment: (shortcutId: number, commentId: number) =>
     request(`/shortcuts/${shortcutId}/comments/${commentId}`, {

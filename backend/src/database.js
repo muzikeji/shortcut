@@ -115,6 +115,10 @@ function initTables() {
   } catch {}
 
   try {
+    db.exec(`ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id)`);
+  } catch {}
+
+  try {
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_shortcuts_slug ON shortcuts(slug)`);
   } catch {}
 

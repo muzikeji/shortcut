@@ -35,6 +35,8 @@ export interface Comment {
   username: string;
   avatar: string;
   content: string;
+  parent_id: number | null;
+  replies?: Comment[];
   created_at: string;
 }
 
