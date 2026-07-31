@@ -777,7 +777,17 @@ interface CommentItemProps {
   onReplyTextChange: (text: string) => void;
   onSubmitReply: (parentId: number) => void;
   onDelete: (commentId: number) => void;
-  depth?: number;
+}
+
+function flattenReplies(replies: Comment[]): Comment[] {
+  const result: Comment[] = [];
+  for (const r of replies) {
+    result.push(r);
+    if (r.replies && r.replies.length > 0) {
+      result.push(...flattenReplies(r.replies));
+    }
+  }
+  return result;
 }
 
 function AvatarImg({ src, name, theme, size }: { src?: string; name: string; theme: string; size: string }) {
@@ -785,8 +795,42 @@ function AvatarImg({ src, name, theme, size }: { src?: string; name: string; the
     return <img src={src} className={`${size} rounded-full object-cover shrink-0`} />;
   }
   return (
-    <div className={`${size} rounded-full flex items-center justify-center text-white shrink-0`} style={{ backgroundColor: theme, fontSize: size === 'w-8 h-8' ? '14px' : '12px' }}>
+    <div className={`${size} rounded-full flex items-center justify-center text-white shrink-0 font-medium`} style={{ backgroundColor: theme, fontSize: size === 'w-8 h-8' ? '14px' : '11px' }}>
       {name?.[0]?.toUpperCase() || '?'}
+    </div>
+  );
+}
+
+function InlineReplyForm({
+  target,
+  replyText,
+  replyLoading,
+  onReplyTextChange,
+  onSubmitReply,
+  onCancel,
+}: {
+  target: ReplyTarget;
+  replyText: string;
+  replyLoading: boolean;
+  onReplyTextChange: (text: string) => void;
+  onSubmitReply: (parentId: number) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="ml-11 mt-2 mb-1">
+      <textarea
+        value={replyText}
+        onChange={e => onReplyTextChange(e.target.value)}
+        placeholder={`回复 @${target.username}...`}
+        className="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
+        rows={2}
+      />
+      <div className="flex justify-end gap-2 mt-1.5">
+        <button onClick={onCancel} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">取消</button>
+        <button onClick={() => onSubmitReply(target.id)} disabled={replyLoading || !replyText.trim()} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+          {replyLoading ? '提交中...' : '回复'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -803,36 +847,25 @@ function CommentItem({
   onReplyTextChange,
   onSubmitReply,
   onDelete,
-  depth = 0,
 }: CommentItemProps) {
-  const parentUsername = comment.parent_id ? commentMap[comment.parent_id]?.username : null;
-  const avatarSize = depth === 0 ? 'w-8 h-8' : 'w-7 h-7';
+  const flatReplies = useMemo(() =>
+    comment.replies ? flattenReplies(comment.replies) : [],
+    [comment.replies]
+  );
 
   return (
     <div>
+      {/* 主评论 */}
       <div className="flex gap-3">
-        <AvatarImg
-          src={comment.avatar}
-          name={comment.username}
-          theme={theme}
-          size={avatarSize}
-        />
+        <AvatarImg src={comment.avatar} name={comment.username} theme={theme} size="w-8 h-8" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-medium text-gray-800">{comment.username}</span>
-            {parentUsername && (
-              <span className="text-xs text-gray-400">
-                <svg className="w-3 h-3 inline-block mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                @{parentUsername}
-              </span>
-            )}
             <span className="text-xs text-gray-400">
               {new Date(comment.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          <p className="text-sm text-gray-600 break-words">{comment.content}</p>
+          <p className="text-sm text-gray-600 mt-0.5 break-words">{comment.content}</p>
           <div className="flex items-center gap-3 mt-1">
             {user && (
               <button
@@ -843,63 +876,74 @@ function CommentItem({
               </button>
             )}
             {user?.id === comment.user_id && (
-              <button
-                onClick={() => onDelete(comment.id)}
-                className="text-xs text-gray-400 hover:text-red-500"
-              >
-                删除
-              </button>
+              <button onClick={() => onDelete(comment.id)} className="text-xs text-gray-400 hover:text-red-500">删除</button>
             )}
           </div>
         </div>
       </div>
 
       {replyTo?.id === comment.id && (
-        <div className="ml-11 mt-2 mb-1">
-          <textarea
-            value={replyText}
-            onChange={e => onReplyTextChange(e.target.value)}
-            placeholder={`回复 @${comment.username}...`}
-            className="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
-            rows={2}
-          />
-          <div className="flex justify-end gap-2 mt-1.5">
-            <button
-              onClick={() => onReply(null)}
-              className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700"
-            >
-              取消
-            </button>
-            <button
-              onClick={() => onSubmitReply(comment.id)}
-              disabled={replyLoading || !replyText.trim()}
-              className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {replyLoading ? '提交中...' : '回复'}
-            </button>
-          </div>
-        </div>
+        <InlineReplyForm
+          target={replyTo}
+          replyText={replyText}
+          replyLoading={replyLoading}
+          onReplyTextChange={onReplyTextChange}
+          onSubmitReply={onSubmitReply}
+          onCancel={() => onReply(null)}
+        />
       )}
 
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-11 mt-3 space-y-3">
-          {comment.replies.map(r => (
-            <CommentItem
-              key={r.id}
-              comment={r}
-              theme={theme}
-              user={user}
-              replyTo={replyTo}
-              replyText={replyText}
-              replyLoading={replyLoading}
-              commentMap={commentMap}
-              onReply={onReply}
-              onReplyTextChange={onReplyTextChange}
-              onSubmitReply={onSubmitReply}
-              onDelete={onDelete}
-              depth={depth + 1}
-            />
-          ))}
+      {/* 扁平化的所有子回复 */}
+      {flatReplies.length > 0 && (
+        <div className="ml-11 mt-2 space-y-2.5">
+          {flatReplies.map(r => {
+            const replyParentUsername = r.parent_id ? commentMap[r.parent_id]?.username : null;
+            return (
+              <div key={r.id}>
+                <div className="flex gap-2.5">
+                  <AvatarImg src={r.avatar} name={r.username} theme={theme} size="w-6 h-6" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 flex-wrap leading-tight">
+                      <span className="text-xs font-medium text-gray-800">{r.username}</span>
+                      {replyParentUsername && (
+                        <>
+                          <span className="text-xs text-gray-400">回复</span>
+                          <span className="text-xs text-blue-500">@{replyParentUsername}</span>
+                        </>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {new Date(r.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-0.5 break-words">{r.content}</p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {user && (
+                        <button
+                          onClick={() => onReply(replyTo?.id === r.id ? null : { id: r.id, username: r.username })}
+                          className="text-xs text-gray-400 hover:text-blue-500"
+                        >
+                          回复
+                        </button>
+                      )}
+                      {user?.id === r.user_id && (
+                        <button onClick={() => onDelete(r.id)} className="text-xs text-gray-400 hover:text-red-500">删除</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {replyTo?.id === r.id && (
+                  <InlineReplyForm
+                    target={replyTo}
+                    replyText={replyText}
+                    replyLoading={replyLoading}
+                    onReplyTextChange={onReplyTextChange}
+                    onSubmitReply={onSubmitReply}
+                    onCancel={() => onReply(null)}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
