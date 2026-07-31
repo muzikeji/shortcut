@@ -118,6 +118,13 @@ function initTables() {
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_shortcuts_slug ON shortcuts(slug)`);
   } catch {}
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
+    );
+  `);
+
   // 为已有记录生成 slug
   const existing = db.prepare('SELECT id, created_at FROM shortcuts WHERE slug IS NULL').all();
   if (existing.length > 0) {

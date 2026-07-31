@@ -7,6 +7,7 @@ const userRoutes = require('./routes/user');
 const shortcutRoutes = require('./routes/shortcut');
 const interactRoutes = require('./routes/interact');
 const adminRoutes = require('./routes/admin');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -18,6 +19,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/shortcuts', shortcutRoutes);
 app.use('/api/shortcuts', interactRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 

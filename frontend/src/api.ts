@@ -161,4 +161,13 @@ export const api = {
     if (params.search) query.set('search', params.search);
     return request(`/admin/shortcuts?${query.toString()}`);
   },
+
+  // Settings
+  getSettings: () => request('/settings'),
+  updateSettings: (body: Record<string, string>) =>
+    request('/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 };
