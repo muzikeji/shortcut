@@ -67,6 +67,7 @@ export default function ShortcutDetail() {
 
   const [similar, setSimilar] = useState<Shortcut[]>([]);
   const [showAllComments, setShowAllComments] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -138,6 +139,15 @@ export default function ShortcutDetail() {
     } finally {
       setCommentLoading(false);
     }
+  };
+
+  const toggleReplies = (commentId: number) => {
+    setExpandedReplies(prev => {
+      const next = new Set(prev);
+      if (next.has(commentId)) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
   };
 
   const handleReply = async (parentId: number) => {
@@ -715,6 +725,8 @@ export default function ShortcutDetail() {
                   replyText={replyText}
                   replyLoading={replyLoading}
                   commentMap={commentMap}
+                  expandedReplies={expandedReplies}
+                  onToggleReplies={() => toggleReplies(c.id)}
                   onReply={(target) => { setReplyTo(target); if (!target) setReplyText(''); }}
                   onReplyTextChange={setReplyText}
                   onSubmitReply={handleReply}
@@ -777,6 +789,8 @@ interface CommentItemProps {
   replyText: string;
   replyLoading: boolean;
   commentMap: Record<number, Comment>;
+  expandedReplies: Set<number>;
+  onToggleReplies: () => void;
   onReply: (target: ReplyTarget | null) => void;
   onReplyTextChange: (text: string) => void;
   onSubmitReply: (parentId: number) => void;
@@ -847,6 +861,8 @@ function CommentItem({
   replyText,
   replyLoading,
   commentMap,
+  expandedReplies,
+  onToggleReplies,
   onReply,
   onReplyTextChange,
   onSubmitReply,
@@ -899,10 +915,21 @@ function CommentItem({
         />
       )}
 
-      {/* 扁平化的所有子回复 */}
+      {/* 子回复 — 默认折叠 */}
       {flatReplies.length > 0 && (
-        <div className="ml-11 mt-2 space-y-2.5">
-          {flatReplies.map(r => {
+        <div className="ml-11 mt-1.5">
+          <button
+            onClick={onToggleReplies}
+            className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1 mb-1"
+          >
+            <svg className={`w-3 h-3 transition-transform ${expandedReplies.has(comment.id) ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            {expandedReplies.has(comment.id) ? '收起' : '展开'} {flatReplies.length} 条回复
+          </button>
+          {expandedReplies.has(comment.id) && (
+            <div className="mt-2 space-y-2.5">
+              {flatReplies.map(r => {
             const replyParentUsername = r.parent_id ? commentMap[r.parent_id]?.username : null;
             return (
               <div key={r.id}>
@@ -952,6 +979,8 @@ function CommentItem({
               </div>
             );
           })}
+            </div>
+          )}
         </div>
       )}
     </div>
