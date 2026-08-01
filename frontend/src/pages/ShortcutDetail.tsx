@@ -270,7 +270,11 @@ export default function ShortcutDetail() {
         version_note: versionNote.trim(),
       });
       setVersions(data.versions);
-      setShortcut({ ...shortcut, file_url: newUrl.trim() });
+      const updated: Partial<Shortcut> = { file_url: newUrl.trim() };
+      if (data.stats) {
+        updated.stats = JSON.stringify(data.stats);
+      }
+      setShortcut({ ...shortcut, ...updated });
       setNewUrl('');
       setVersionNote('');
       setShowVersionForm(false);

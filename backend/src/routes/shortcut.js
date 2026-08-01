@@ -539,7 +539,7 @@ router.get('/:id/versions', (req, res) => {
   res.json({ versions });
 });
 
-router.post('/:id/versions', authRequired, (req, res) => {
+router.post('/:id/versions', authRequired, async (req, res) => {
   const db = getDb();
   const shortcut = idParam(db, req.params.id);
 
@@ -564,6 +564,13 @@ router.post('/:id/versions', authRequired, (req, res) => {
   db.prepare('UPDATE shortcuts SET file_url = ? WHERE id = ?')
     .run(url, shortcut.id);
 
+  const meta = await fetchShortcutMeta(url);
+  const stats = await parseShortcutStats(meta?.shortcutUrl);
+  if (stats) {
+    db.prepare('UPDATE shortcuts SET stats = ? WHERE id = ?')
+      .run(JSON.stringify(stats), shortcut.id);
+  }
+
   const versions = db.prepare(`
     SELECT id, shortcut_id, url, version_note, created_at
     FROM shortcut_versions
@@ -571,7 +578,7 @@ router.post('/:id/versions', authRequired, (req, res) => {
     ORDER BY created_at DESC
   `).all(shortcut.id);
 
-  res.json({ versions, message: '版本更新成功' });
+  res.json({ versions, stats, message: '版本更新成功' });
 });
 
 router.get('/:id/similar', (req, res) => {
