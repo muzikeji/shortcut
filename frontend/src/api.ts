@@ -170,4 +170,8 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+
+  // Update
+  checkUpdate: () => request('/update/check'),
+  runUpdate: () => request('/update/run', { method: 'POST' }),
 };
