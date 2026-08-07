@@ -52,6 +52,8 @@ export interface AdminUser {
   created_at: string;
 }
 
+export const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'] as const;
+
 export const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; light: string; accent: string }> = {
   '效率': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200', light: 'bg-blue-50', accent: 'blue' },
   '工具': { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', light: 'bg-green-50', accent: 'green' },

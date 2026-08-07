@@ -15,13 +15,16 @@ async function request(url: string, options: RequestInit = {}) {
     headers,
   });
 
-  const data = await res.json();
-
   if (!res.ok) {
-    throw new Error(data.error || '请求失败');
+    let errorMsg = `请求失败 (${res.status})`;
+    try {
+      const data = await res.json();
+      errorMsg = data.error || data.message || errorMsg;
+    } catch {}
+    throw new Error(errorMsg);
   }
 
-  return data;
+  return await res.json();
 }
 
 export const api = {
@@ -68,6 +71,7 @@ export const api = {
     sort?: string;
     userId?: number;
     includeRemoved?: boolean;
+    status?: string;
   }) => {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
@@ -75,6 +79,7 @@ export const api = {
     if (params.sort) query.set('sort', params.sort);
     if (params.userId) query.set('userId', String(params.userId));
     if (params.includeRemoved) query.set('includeRemoved', '1');
+    if (params.status) query.set('status', params.status);
     return request(`/shortcuts?${query.toString()}`);
   },
   getShortcut: (idOrSlug: number | string) => request(`/shortcuts/${idOrSlug}`),
@@ -144,7 +149,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
-  adminSetRole: (id: number, role: 'admin' | 'user') =>
+  adminSetRole: (id: number, role: 'owner' | 'admin' | 'user') =>
     request(`/admin/users/${id}/role`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -161,9 +166,21 @@ export const api = {
     if (params.search) query.set('search', params.search);
     return request(`/admin/shortcuts?${query.toString()}`);
   },
+  adminDeleteShortcut: (id: number) =>
+    request(`/admin/shortcuts/${id}`, { method: 'DELETE' }),
+  adminGetPendingShortcuts: (params: { page?: number }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    return request(`/admin/shortcuts/pending?${query.toString()}`);
+  },
+  adminApproveShortcut: (id: number) =>
+    request(`/admin/shortcuts/${id}/approve`, { method: 'PUT' }),
+  adminRejectShortcut: (id: number) =>
+    request(`/admin/shortcuts/${id}/reject`, { method: 'PUT' }),
 
   // Settings
   getSettings: () => request('/settings'),
+  getAdminSettings: () => request('/admin/settings'),
   updateSettings: (body: Record<string, string>) =>
     request('/settings', {
       method: 'PUT',
@@ -173,5 +190,6 @@ export const api = {
 
   // Update
   checkUpdate: () => request('/update/check'),
-  runUpdate: () => request('/update/run', { method: 'POST' }),
+  runUpdate: () => request('/update/run?stage=download', { method: 'POST' }),
+  installUpdate: () => request('/update/run?stage=install', { method: 'POST' }),
 };

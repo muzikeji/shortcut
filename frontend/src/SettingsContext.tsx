@@ -28,7 +28,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
 
   useEffect(() => {
-    api.getSettings().then(setSettings).catch(() => {});
+    api.getSettings().then(setSettings).catch((e) => {
+      console.error('加载站点配置失败', e);
+    });
   }, []);
 
   return (

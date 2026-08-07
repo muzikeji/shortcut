@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
-
-const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'];
+import { CATEGORIES } from './types';
 const ICLOUD_REGEX = /^https?:\/\/(www\.)?icloud\.com\/shortcuts\/[a-zA-Z0-9]+$/i;
 
 function formatNow() {
@@ -91,12 +90,8 @@ export default function Share() {
       return;
     }
 
-    if (!shortcutName) {
-      setError('正在获取快捷指令名称，请稍候重试');
-      return;
-    }
-
     setLoading(true);
+
     try {
       const data = await api.createShortcut({
         title: shortcutName,
@@ -108,12 +103,11 @@ export default function Share() {
       });
       navigate(`/shortcut/${data.shortcut.slug}`);
     } catch (err: any) {
+      setLoading(false);
       setError(err.message);
       if (/标识已被使用|重复/i.test(err.message)) {
         setSlug(generateSlug());
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -211,7 +205,7 @@ export default function Share() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? '发布中...' : '发布快捷指令'}
+          {loading ? '正在解析快捷指令信息，请稍后！' : '发布快捷指令'}
         </button>
       </form>
     </div>

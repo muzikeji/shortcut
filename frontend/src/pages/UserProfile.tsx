@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
 import type { Shortcut } from './types';
 
 interface UserProfile {
@@ -17,9 +18,14 @@ interface UserProfile {
 export default function UserProfile() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, updateUser, logout } = useAuth();
+  const { toast, confirm } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
 
   const [editing, setEditing] = useState(false);
   const [editUsername, setEditUsername] = useState('');
@@ -46,12 +52,21 @@ export default function UserProfile() {
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setLoading(true);
+    const params: any = { userId: Number(id) };
+    if (isOwnProfile && statusFilter) {
+      params.status = statusFilter;
+    } else if (isOwnProfile && !statusFilter) {
+      params.includeRemoved = true;
+    }
+    if (search) params.search = search;
     Promise.all([
       api.getUser(Number(id)),
-      api.getShortcuts({ userId: Number(id), includeRemoved: isOwnProfile }),
+      api.getShortcuts(params),
     ])
       .then(([userData, shortcutData]) => {
+        if (cancelled) return;
         if (isOwnProfile && currentUser) {
           userData.user.email = currentUser.email || userData.user.email;
         }
@@ -59,8 +74,20 @@ export default function UserProfile() {
         setShortcuts(shortcutData.shortcuts);
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [id, currentUser, isOwnProfile]);
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id, currentUser, isOwnProfile, statusFilter, search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    return () => {
+      if (editAvatarPreview) URL.revokeObjectURL(editAvatarPreview);
+    };
+  }, [editAvatarPreview]);
 
   const startEditing = () => {
     if (!profile) return;
@@ -75,6 +102,7 @@ export default function UserProfile() {
 
   const cancelEditing = () => {
     setEditing(false);
+    if (editAvatarPreview) URL.revokeObjectURL(editAvatarPreview);
     setEditAvatarFile(null);
     setEditAvatarPreview('');
     setSaveError('');
@@ -84,7 +112,7 @@ export default function UserProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert('头像图片不能超过 2MB');
+      toast('头像图片不能超过 2MB', 'error');
       return;
     }
     setEditAvatarFile(file);
@@ -131,6 +159,7 @@ export default function UserProfile() {
       }
 
       setEditing(false);
+      if (editAvatarPreview) URL.revokeObjectURL(editAvatarPreview);
       setEditAvatarFile(null);
       setEditAvatarPreview('');
     } catch (e: any) {
@@ -179,7 +208,7 @@ export default function UserProfile() {
 
   const handleLike = async (sid: number) => {
     if (!currentUser) {
-      alert('请先登录后再点赞');
+      toast('请先登录后再点赞', 'info');
       return;
     }
     try {
@@ -188,19 +217,19 @@ export default function UserProfile() {
         prev.map(s => (s.id === sid ? { ...s, liked: data.liked, like_count: data.like_count } : s))
       );
     } catch (e: any) {
-      alert(e.message);
+      toast(e.message, 'error');
     }
   };
 
   const handleRemoveShortcut = async (sid: number) => {
-    if (!confirm('确定要下架该分享吗？')) return;
+    if (!(await confirm('确定要下架该分享吗？'))) return;
     try {
       await api.removeShortcut(sid);
       setShortcuts(prev =>
         prev.map(s => (s.id === sid ? { ...s, status: 'removed' } : s))
       );
     } catch (e: any) {
-      alert(e.message);
+      toast(e.message, 'error');
     }
   };
 
@@ -211,8 +240,12 @@ export default function UserProfile() {
         prev.map(s => (s.id === sid ? { ...s, status: 'active' } : s))
       );
     } catch (e: any) {
-      alert(e.message);
+      toast(e.message, 'error');
     }
+  };
+
+  const handleReeditShortcut = (slug: string) => {
+    navigate(`/shortcut/${slug}`);
   };
 
   return (
@@ -424,6 +457,48 @@ export default function UserProfile() {
         )}
       </div>
 
+      {/* Filter Bar */}
+      {isOwnProfile && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+            {[
+              { key: '', label: '全部' },
+              { key: 'active', label: '分享中' },
+              { key: 'pending', label: '待审核' },
+              { key: 'removed', label: '已下架' },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${statusFilter === f.key ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 min-w-[160px] max-w-xs">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="搜索快捷指令..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {searchInput && (
+              <button
+                onClick={() => setSearchInput('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* User's Shortcuts */}
       <h2 className="text-lg font-semibold text-gray-800 mb-4">
         {profile.username} 分享的快捷指令 ({shortcuts.length})
@@ -432,12 +507,24 @@ export default function UserProfile() {
       {shortcuts.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
           {isOwner ? (
-            <>
-              <p className="mb-3">你还没有分享过快捷指令</p>
-              <Link to="/share" className="text-blue-600 hover:underline text-sm">
-                去分享第一个
-              </Link>
-            </>
+            <div>
+              <p className="mb-3">
+                {(() => {
+                  if (search) return '没有找到匹配的快捷指令';
+                  switch (statusFilter) {
+                    case 'active': return '没有分享中的快捷指令';
+                    case 'pending': return '没有待审核的快捷指令';
+                    case 'removed': return '没有已下架的快捷指令';
+                    default: return '你还没有分享过快捷指令';
+                  }
+                })()}
+              </p>
+              {!statusFilter && !search && (
+                <Link to="/share" className="text-blue-600 hover:underline text-sm">
+                  去分享第一个
+                </Link>
+              )}
+            </div>
           ) : (
             <p>该用户还没有分享过快捷指令</p>
           )}
@@ -450,37 +537,43 @@ export default function UserProfile() {
             <div
               key={s.id}
               onClick={() => navigate(`/shortcut/${s.slug}`)}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
+              className="rounded-xl p-5 hover:shadow-lg transition-shadow cursor-pointer"
+              style={{ backgroundColor: theme }}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${theme}1A`, color: theme }}>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' }}>
                     {s.category}
                   </span>
+                  {s.status === 'pending' && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                      待审核
+                    </span>
+                  )}
                   {s.status === 'removed' && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
                       已下架
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-white/60">
                   {new Date(s.created_at).toLocaleDateString('zh-CN')}
                 </span>
               </div>
 
-              <h3 className="font-semibold text-gray-800 mb-1 line-clamp-1" style={{ color: theme }}>
+              <h3 className="font-semibold text-white mb-1 line-clamp-1">
                 {s.title}
               </h3>
-              <p className="text-sm text-gray-500 line-clamp-2 mb-4 min-h-[2.5rem]">
+              <p className="text-sm text-white/70 line-clamp-2 mb-4 min-h-[2.5rem]">
                 {s.description || '暂无描述'}
               </p>
 
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{s.download_count} 次下载</span>
+                <span className="text-xs text-white/60">{s.download_count} 次下载</span>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleLike(s.id); }}
-                    className={`flex items-center gap-1 text-sm ${s.liked ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
+                    className={`flex items-center gap-1 text-sm ${s.liked ? 'text-red-300' : 'text-white/60'} hover:text-red-300`}
                   >
                     <svg className="w-4 h-4" fill={s.liked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -490,7 +583,7 @@ export default function UserProfile() {
                   <Link
                     to={`/shortcut/${s.slug}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-500"
+                    className="flex items-center gap-1 text-sm text-white/60 hover:text-white"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -502,23 +595,29 @@ export default function UserProfile() {
                     onClick={(e) => e.stopPropagation()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium hover:underline"
-                    style={{ color: theme }}
+                    className="text-sm font-medium text-white hover:underline"
                   >
                     获取
                   </a>
                   {isOwner && (
-                    s.status === 'removed' ? (
+                    s.status === 'pending' ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleReeditShortcut(s.slug); }}
+                        className="text-white/70 hover:text-white text-xs"
+                      >
+                        编辑
+                      </button>
+                    ) : s.status === 'removed' ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRestoreShortcut(s.id); }}
-                        className="text-green-600 text-xs hover:text-green-800"
+                        className="text-white/70 hover:text-white text-xs"
                       >
                         恢复
                       </button>
                     ) : (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRemoveShortcut(s.id); }}
-                        className="text-red-500 text-xs hover:text-red-700"
+                        className="text-white/70 hover:text-white text-xs"
                       >
                         下架
                       </button>

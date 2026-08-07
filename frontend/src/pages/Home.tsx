@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
+import { useToast } from '../ToastContext';
 import type { Shortcut } from './types';
 
 export default function Home() {  const [searchParams] = useSearchParams();
@@ -12,22 +13,26 @@ export default function Home() {  const [searchParams] = useSearchParams();
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     api.getShortcuts({ page, search, sort })
       .then(data => {
+        if (cancelled) return;
         setShortcuts(data.shortcuts);
         setTotalPages(data.totalPages);
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [page, search, sort]);
 
   const handleLike = async (id: number) => {
     if (!user) {
-      alert('请先登录后再点赞');
+      toast('请先登录后再点赞', 'info');
       return;
     }
     try {
@@ -36,7 +41,7 @@ export default function Home() {  const [searchParams] = useSearchParams();
         prev.map(s => (s.id === id ? { ...s, liked: data.liked, like_count: data.like_count } : s))
       );
     } catch (e: any) {
-      alert(e.message);
+      toast(e.message, 'error');
     }
   };
 
@@ -73,41 +78,48 @@ export default function Home() {  const [searchParams] = useSearchParams();
             <div
               key={s.id}
               onClick={() => navigate(`/shortcut/${s.slug}`)}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer"
+              className="rounded-xl p-5 hover:shadow-lg transition-shadow cursor-pointer"
+              style={{ backgroundColor: theme }}
             >
               <div className="flex items-start justify-between mb-2">
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: `${theme}1A`, color: theme }}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' }}
                 >
                   {s.category}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-white/60">
                   {new Date(s.created_at).toLocaleDateString('zh-CN')}
                 </span>
               </div>
 
-              <h2 className="font-semibold text-gray-800 mb-1 line-clamp-1" style={{ color: theme }}>
+              <h2 className="font-semibold text-white mb-1 line-clamp-1">
                 {s.title}
               </h2>
-              <p className="text-sm text-gray-500 line-clamp-2 mb-4 min-h-[2.5rem]">
+              <p className="text-sm text-white/70 line-clamp-2 mb-4 min-h-[2.5rem]">
                 {s.description || '暂无描述'}
               </p>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-xs text-gray-400">
+                <div className="flex items-center gap-1 text-xs text-white/60">
+                  {s.avatar ? (
+                    <img src={s.avatar} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: theme }}>
+                      {s.username?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
                   <Link
                     to={`/user/${s.user_id}`}
                     onClick={(e) => e.stopPropagation()}
-                    style={{ color: theme }}
-                    className="hover:underline"
+                    className="text-white/60 hover:text-white hover:underline"
                   >{s.username}</Link>
                   <span>{s.download_count} 次下载</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleLike(s.id); }}
-                    className={`flex items-center gap-1 text-sm ${s.liked ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
+                    className={`flex items-center gap-1 text-sm ${s.liked ? 'text-red-300' : 'text-white/60'} hover:text-red-300`}
                   >
                     <svg className="w-4 h-4" fill={s.liked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -117,7 +129,7 @@ export default function Home() {  const [searchParams] = useSearchParams();
                   <Link
                     to={`/shortcut/${s.slug}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-500"
+                    className="flex items-center gap-1 text-sm text-white/60 hover:text-white"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -129,8 +141,7 @@ export default function Home() {  const [searchParams] = useSearchParams();
                     onClick={(e) => e.stopPropagation()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium hover:underline"
-                    style={{ color: theme }}
+                    className="text-sm font-medium text-white hover:underline"
                   >
                     获取
                   </a>
@@ -143,16 +154,28 @@ export default function Home() {  const [searchParams] = useSearchParams();
       )}
 
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-8">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
-              className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="flex justify-center gap-1 mt-8">
+          {(() => {
+            const pages: (number | string)[] = [];
+            const maxShow = 7;
+            if (totalPages <= maxShow) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              pages.push(1);
+              if (page > 2) pages.push('...');
+              for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+              if (page < totalPages - 1) pages.push('...');
+              pages.push(totalPages);
+            }
+            return pages.map((p, i) =>
+              typeof p === 'string' ? <span key={`dots-${i}`} className="w-8 h-8 flex items-center justify-center text-gray-400">...</span> :
+              (<button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-8 h-8 rounded-lg text-sm ${p === page ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >{p}</button>)
+            );
+          })()}
         </div>
       )}
     </div>

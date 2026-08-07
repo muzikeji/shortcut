@@ -30,9 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       api.getMe()
         .then(data => setUser(data.user))
-        .catch(() => {
-          localStorage.removeItem('token');
-          setToken(null);
+        .catch((e: Error) => {
+          if (e.message.includes('401') || e.message.includes('未授权') || e.message.includes('token')) {
+            localStorage.removeItem('token');
+            setToken(null);
+          }
+          console.error('验证登录状态失败', e);
         })
         .finally(() => setLoading(false));
     } else {

@@ -1,53 +1,22 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../AuthContext';
-import type { Shortcut, Comment, ShortcutVersion } from './types';
-
-const CATEGORIES = ['效率', '工具', '娱乐', '健康', '学习', '生活', '其他'];
-const COMMENT_PREVIEW_COUNT = 5;
-
-const PERMISSION_ICONS: Record<string, string> = {
-  '照片': 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-  '定位': 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z',
-  '相机': 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
-  '麦克风': 'M19 11a7 7 0 01-14 0m7 7v3m0 0H9m4 0h-4',
-  '通讯录': 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-  '日历': 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-  '信息': 'M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-  '邮件': 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-  '电话': 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
-  '文件': 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
-  '剪贴板': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  '通知': 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
-  '网络': 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.07c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0',
-  '蓝牙': 'M7 8l10 8-5 4V4l5 4-10 8',
-  '健康': 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
-  '音乐': 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z',
-  '提醒事项': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  '壁纸': 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-  '电池': 'M22 12v3h-3M2 9v3M4 15a8 8 0 0016 0M4 15a8 8 0 0016 0',
-  '手电筒': 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0015 18.5V19a1 1 0 01-1 1h-4a1 1 0 01-1-1v-.5c0-.83-.264-1.653-.848-2.313l-.55-.55z',
-  '屏幕亮度': 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
-  '音量': 'M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z',
-  'App Store': 'M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 1.096A4.001 4.001 0 003 15z',
-  '打开应用': 'M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14',
-  'FaceTime': 'M3 5a2 2 0 012-2h8a2 2 0 012 2v.5l5.8-2.9a1 1 0 011.2.9v13a1 1 0 01-1.2.9L15 14.5V15a2 2 0 01-2 2H5a2 2 0 01-2-2V5z',
-};
-
+import { useToast } from '../ToastContext';
+import type { Shortcut, ShortcutVersion } from './types';
+import PERMISSION_ICONS from '../components/shortcut/PermissionIcon';
+import CommentSection from '../components/shortcut/CommentSection';
+import VersionPanel from '../components/shortcut/VersionPanel';
+import ShortcutEditForm from '../components/shortcut/ShortcutEditForm';
 
 export default function ShortcutDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { toast, confirm } = useToast();
   const [shortcut, setShortcut] = useState<Shortcut | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(true);
-  const [commentLoading, setCommentLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [replyTo, setReplyTo] = useState<{ id: number; username: string } | null>(null);
-  const [replyText, setReplyText] = useState('');
-  const [replyLoading, setReplyLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
 
   const [editing, setEditing] = useState(false);
@@ -66,132 +35,63 @@ export default function ShortcutDetail() {
   const [versionError, setVersionError] = useState('');
 
   const [similar, setSimilar] = useState<Shortcut[]>([]);
-  const [showAllComments, setShowAllComments] = useState(false);
-  const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setLoading(true);
     api.getShortcut(id)
       .then(async (shortcutData) => {
+        if (cancelled) return;
         const shortcut = shortcutData.shortcut;
         setShortcut(shortcut);
-        const [commentData, versionData, similarData] = await Promise.all([
-          api.getComments(shortcut.id),
+        const [versionData, similarData] = await Promise.all([
           api.getVersions(shortcut.id),
           api.getSimilar(shortcut.id),
         ]);
-        setComments(commentData.comments);
+        if (cancelled) return;
         setVersions(versionData.versions);
         setSimilar(similarData.shortcuts);
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [id]);
+
+  useEffect(() => {
+    if (shortcut) {
+      document.title = shortcut.title ? `${shortcut.title} - 捷径社区` : '捷径社区';
+    }
+    return () => { document.title = '捷径社区'; };
+  }, [shortcut]);
 
   const handleLike = async () => {
     if (!user) {
-      alert('请先登录后再点赞');
+      toast('请先登录后再点赞', 'info');
       return;
     }
-    if (!shortcut) return;
+    if (!shortcut || likeLoading) return;
+    setLikeLoading(true);
     try {
       const data = await api.toggleLike(shortcut.id);
       setShortcut({ ...shortcut, liked: data.liked, like_count: data.like_count });
     } catch (e: any) {
-      alert(e.message);
-    }
-  };
-
-  const { commentTree, commentMap } = useMemo(() => {
-    const map: Record<number, Comment> = {};
-    const roots: Comment[] = [];
-    for (const c of comments) {
-      map[c.id] = { ...c, replies: [] };
-    }
-    for (const c of comments) {
-      const node = map[c.id];
-      if (c.parent_id && map[c.parent_id]) {
-        map[c.parent_id].replies!.push(node);
-      } else {
-        roots.push(node);
-      }
-    }
-    return { commentTree: roots, commentMap: map };
-  }, [comments]);
-
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      alert('请先登录后再评论');
-      return;
-    }
-    if (!commentText.trim() || !shortcut) return;
-
-    setCommentLoading(true);
-    try {
-      const data = await api.addComment(shortcut.id, commentText.trim());
-      setComments([data.comment, ...comments]);
-      setShortcut({ ...shortcut, comment_count: shortcut.comment_count + 1 });
-      setCommentText('');
-    } catch (e: any) {
-      alert(e.message);
+      toast(e.message, 'error');
     } finally {
-      setCommentLoading(false);
-    }
-  };
-
-  const toggleReplies = (commentId: number) => {
-    setExpandedReplies(prev => {
-      const next = new Set(prev);
-      if (next.has(commentId)) next.delete(commentId);
-      else next.add(commentId);
-      return next;
-    });
-  };
-
-  const handleReply = async (parentId: number) => {
-    if (!user) {
-      alert('请先登录后再评论');
-      return;
-    }
-    if (!replyText.trim() || !shortcut) return;
-
-    setReplyLoading(true);
-    try {
-      const data = await api.addComment(shortcut.id, replyText.trim(), parentId);
-      setComments([data.comment, ...comments]);
-      setShortcut({ ...shortcut, comment_count: shortcut.comment_count + 1 });
-      setReplyText('');
-      setReplyTo(null);
-    } catch (e: any) {
-      alert(e.message);
-    } finally {
-      setReplyLoading(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId: number) => {
-    if (!shortcut || !confirm('确定要删除该评论吗？')) return;
-    try {
-      const data = await api.deleteComment(shortcut.id, commentId);
-      setComments(comments.filter(c => c.id !== commentId && c.parent_id !== commentId));
-      setShortcut({ ...shortcut, comment_count: shortcut.comment_count - (1 + (data.deleted_replies || 0)) });
-    } catch (e: any) {
-      alert(e.message);
+      setLikeLoading(false);
     }
   };
 
   const handleRemove = async () => {
     if (!shortcut) return;
-    if (!confirm('确定要下架该分享吗？')) return;
+    if (!(await confirm('确定要下架该分享吗？'))) return;
     setActionLoading(true);
     try {
       await api.removeShortcut(shortcut.id);
       setShortcut({ ...shortcut, status: 'removed' });
     } catch (e: any) {
       console.error('下架失败', e);
-      alert(e.message || '下架失败，请重试');
+      toast(e.message || '下架失败，请重试', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -205,7 +105,7 @@ export default function ShortcutDetail() {
       setShortcut({ ...shortcut, status: 'active' });
     } catch (e: any) {
       console.error('恢复失败', e);
-      alert(e.message || '恢复失败，请重试');
+      toast(e.message || '恢复失败，请重试', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -221,7 +121,7 @@ export default function ShortcutDetail() {
       }
     } catch (e: any) {
       console.error('刷新统计失败', e);
-      alert(e.message || '统计刷新失败，请重试');
+      toast(e.message || '统计刷新失败，请重试', 'error');
     } finally {
       setRefreshLoading(false);
     }
@@ -343,57 +243,18 @@ export default function ShortcutDetail() {
         style={{ borderColor: `${theme}40`, backgroundColor: `${theme}08` }}
       >
         {editing ? (
-          <div className="space-y-3">
-            {editError && (
-              <div className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs">{editError}</div>
-            )}
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">名称</label>
-              <input
-                type="text"
-                value={editTitle}
-                onChange={e => setEditTitle(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">分类</label>
-              <select
-                value={editCategory}
-                onChange={e => setEditCategory(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500 max-w-xs"
-              >
-                {CATEGORIES.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">描述</label>
-              <textarea
-                value={editDescription}
-                onChange={e => setEditDescription(e.target.value)}
-                placeholder="描述这个快捷指令的功能..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleSaveEdit}
-                disabled={editLoading}
-                className="bg-blue-600 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-              >
-                {editLoading ? '保存中...' : '保存'}
-              </button>
-              <button
-                onClick={cancelEditing}
-                className="text-gray-500 px-4 py-1.5 rounded-lg text-sm hover:bg-gray-100"
-              >
-                取消
-              </button>
-            </div>
-          </div>
+          <ShortcutEditForm
+            editTitle={editTitle}
+            editDescription={editDescription}
+            editCategory={editCategory}
+            editError={editError}
+            editLoading={editLoading}
+            onTitleChange={setEditTitle}
+            onDescriptionChange={setEditDescription}
+            onCategoryChange={setEditCategory}
+            onSave={handleSaveEdit}
+            onCancel={cancelEditing}
+          />
         ) : (
           <>
             <div className="flex items-center gap-2 mb-3">
@@ -547,7 +408,6 @@ export default function ShortcutDetail() {
         )}
       </div>
 
-      {/* 操作按钮 */}
       {(isOwner || isAdmin) && !editing && (
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <button
@@ -596,7 +456,6 @@ export default function ShortcutDetail() {
         </div>
       )}
 
-      {/* 更新版本表单 */}
       {showVersionForm && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">更新版本</h3>
@@ -647,114 +506,12 @@ export default function ShortcutDetail() {
         </div>
       )}
 
-      {/* 版本历史 */}
       {showVersions && versions.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">版本记录</h3>
-          <div className="space-y-3">
-            {versions.map((v, i) => (
-              <div key={v.id} className={`flex gap-3 ${i < versions.length - 1 ? 'pb-3 border-b border-gray-100' : ''}`}>
-                <div className={`shrink-0 w-2 h-2 mt-1.5 rounded-full ${i === 0 ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
-                      {new Date(v.created_at).toLocaleString('zh-CN')}
-                    </span>
-                    {i === 0 && <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700">当前</span>}
-                  </div>
-                  {v.version_note && (
-                    <p className="text-sm text-gray-600 mt-1">{v.version_note}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1 truncate">{v.url}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <VersionPanel versions={versions} />
       )}
 
-      {/* 评论区 */}
-      {shortcut.status === 'removed' ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-400 text-sm mb-6">
-          该分享已被下架，评论功能已关闭
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            评论 ({shortcut.comment_count})
-          </h2>
+      <CommentSection shortcutId={shortcut.id} status={shortcut.status} />
 
-          {user ? (
-            <form onSubmit={handleComment} className="mb-6">
-              <textarea
-                value={commentText}
-                onChange={e => setCommentText(e.target.value)}
-                placeholder="写下你的评论..."
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
-                rows={3}
-              />
-              <div className="flex justify-end mt-2">
-                <button
-                  type="submit"
-                  disabled={commentLoading || !commentText.trim()}
-                  className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {commentLoading ? '提交中...' : '发表评论'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg text-sm text-gray-500 text-center">
-              请
-              <Link to="/login" className="text-blue-600 hover:underline mx-1">登录</Link>
-              后发表评论
-            </div>
-          )}
-
-          {comments.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-4">暂无评论</p>
-          ) : (
-            <div className="space-y-4">
-              {(showAllComments ? commentTree : commentTree.slice(0, COMMENT_PREVIEW_COUNT)).map(c => (
-                <CommentItem
-                  key={c.id}
-                  comment={c}
-                  theme={theme}
-                  user={user}
-                  replyTo={replyTo}
-                  replyText={replyText}
-                  replyLoading={replyLoading}
-                  commentMap={commentMap}
-                  expandedReplies={expandedReplies}
-                  onToggleReplies={() => toggleReplies(c.id)}
-                  onReply={(target) => { setReplyTo(target); if (!target) setReplyText(''); }}
-                  onReplyTextChange={setReplyText}
-                  onSubmitReply={handleReply}
-                  onDelete={handleDeleteComment}
-                />
-              ))}
-              {!showAllComments && commentTree.length > COMMENT_PREVIEW_COUNT && (
-                <button
-                  onClick={() => setShowAllComments(true)}
-                  className="w-full text-center text-sm text-blue-600 hover:text-blue-800 py-2"
-                >
-                  展开剩余 {commentTree.length - COMMENT_PREVIEW_COUNT} 条评论
-                </button>
-              )}
-              {showAllComments && commentTree.length > COMMENT_PREVIEW_COUNT && (
-                <button
-                  onClick={() => setShowAllComments(false)}
-                  className="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2"
-                >
-                  收起评论
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 相似推荐 -- 小屏幕下显示 */}
       <div className="lg:hidden mb-6">
         {similarSection}
       </div>
@@ -765,224 +522,12 @@ export default function ShortcutDetail() {
     <div className="w-full px-4 py-6 max-w-[1600px] mx-auto">
       <div className="flex gap-6">
         {mainContent}
-        {/* 相似推荐 -- 大屏幕右侧栏 */}
         <div className="hidden lg:block w-80 shrink-0">
           <div className="sticky top-20">
             {similarSection}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-interface ReplyTarget {
-  id: number;
-  username: string;
-}
-
-interface CommentItemProps {
-  comment: Comment;
-  theme: string;
-  user: { id: number; role?: string } | null;
-  replyTo: ReplyTarget | null;
-  replyText: string;
-  replyLoading: boolean;
-  commentMap: Record<number, Comment>;
-  expandedReplies: Set<number>;
-  onToggleReplies: () => void;
-  onReply: (target: ReplyTarget | null) => void;
-  onReplyTextChange: (text: string) => void;
-  onSubmitReply: (parentId: number) => void;
-  onDelete: (commentId: number) => void;
-}
-
-function flattenReplies(replies: Comment[]): Comment[] {
-  const result: Comment[] = [];
-  for (const r of replies) {
-    result.push(r);
-    if (r.replies && r.replies.length > 0) {
-      result.push(...flattenReplies(r.replies));
-    }
-  }
-  return result;
-}
-
-function AvatarImg({ src, name, theme, size }: { src?: string; name: string; theme: string; size: string }) {
-  if (src) {
-    return <img src={src} className={`${size} rounded-full object-cover shrink-0`} />;
-  }
-  return (
-    <div className={`${size} rounded-full flex items-center justify-center text-white shrink-0 font-medium`} style={{ backgroundColor: theme, fontSize: size === 'w-8 h-8' ? '14px' : '11px' }}>
-      {name?.[0]?.toUpperCase() || '?'}
-    </div>
-  );
-}
-
-function InlineReplyForm({
-  target,
-  replyText,
-  replyLoading,
-  onReplyTextChange,
-  onSubmitReply,
-  onCancel,
-}: {
-  target: ReplyTarget;
-  replyText: string;
-  replyLoading: boolean;
-  onReplyTextChange: (text: string) => void;
-  onSubmitReply: (parentId: number) => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="ml-11 mt-2 mb-1">
-      <textarea
-        value={replyText}
-        onChange={e => onReplyTextChange(e.target.value)}
-        placeholder={`回复 @${target.username}...`}
-        className="w-full px-3 py-1.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm"
-        rows={2}
-      />
-      <div className="flex justify-end gap-2 mt-1.5">
-        <button onClick={onCancel} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">取消</button>
-        <button onClick={() => onSubmitReply(target.id)} disabled={replyLoading || !replyText.trim()} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
-          {replyLoading ? '提交中...' : '回复'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function CommentItem({
-  comment,
-  theme,
-  user,
-  replyTo,
-  replyText,
-  replyLoading,
-  commentMap,
-  expandedReplies,
-  onToggleReplies,
-  onReply,
-  onReplyTextChange,
-  onSubmitReply,
-  onDelete,
-}: CommentItemProps) {
-  const flatReplies = useMemo(() =>
-    comment.replies ? flattenReplies(comment.replies) : [],
-    [comment.replies]
-  );
-
-  return (
-    <div>
-      {/* 主评论 */}
-      <div className="flex gap-3">
-        <Link to={`/user/${comment.user_id}`} className="shrink-0">
-          <AvatarImg src={comment.avatar} name={comment.username} theme={theme} size="w-8 h-8" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Link to={`/user/${comment.user_id}`} className="text-sm font-medium text-gray-800 hover:text-blue-600">{comment.username}</Link>
-            <span className="text-xs text-gray-400">
-              {new Date(comment.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mt-0.5 break-words">{comment.content}</p>
-          <div className="flex items-center gap-3 mt-1">
-            {user && (
-              <button
-                onClick={() => onReply(replyTo?.id === comment.id ? null : { id: comment.id, username: comment.username })}
-                className="text-xs text-gray-400 hover:text-blue-500"
-              >
-                回复
-              </button>
-            )}
-            {user?.id === comment.user_id && (
-              <button onClick={() => onDelete(comment.id)} className="text-xs text-gray-400 hover:text-red-500">删除</button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {replyTo?.id === comment.id && (
-        <InlineReplyForm
-          target={replyTo}
-          replyText={replyText}
-          replyLoading={replyLoading}
-          onReplyTextChange={onReplyTextChange}
-          onSubmitReply={onSubmitReply}
-          onCancel={() => onReply(null)}
-        />
-      )}
-
-      {/* 子回复 — 默认折叠 */}
-      {flatReplies.length > 0 && (
-        <div className="ml-11 mt-1.5">
-          <button
-            onClick={onToggleReplies}
-            className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1 mb-1"
-          >
-            <svg className={`w-3 h-3 transition-transform ${expandedReplies.has(comment.id) ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            {expandedReplies.has(comment.id) ? '收起' : '展开'} {flatReplies.length} 条回复
-          </button>
-          {expandedReplies.has(comment.id) && (
-            <div className="mt-2 space-y-2.5">
-              {flatReplies.map(r => {
-            const replyParentUsername = r.parent_id ? commentMap[r.parent_id]?.username : null;
-            return (
-              <div key={r.id}>
-                <div className="flex gap-2.5">
-                  <Link to={`/user/${r.user_id}`} className="shrink-0">
-                    <AvatarImg src={r.avatar} name={r.username} theme={theme} size="w-6 h-6" />
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 flex-wrap leading-tight">
-                      <Link to={`/user/${r.user_id}`} className="text-xs font-medium text-gray-800 hover:text-blue-600">{r.username}</Link>
-                      {replyParentUsername && (
-                        <>
-                          <span className="text-xs text-gray-400">回复</span>
-                          <span className="text-xs text-blue-500">@{replyParentUsername}</span>
-                        </>
-                      )}
-                      <span className="text-xs text-gray-400">
-                        {new Date(r.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-0.5 break-words">{r.content}</p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      {user && (
-                        <button
-                          onClick={() => onReply(replyTo?.id === r.id ? null : { id: r.id, username: r.username })}
-                          className="text-xs text-gray-400 hover:text-blue-500"
-                        >
-                          回复
-                        </button>
-                      )}
-                      {user?.id === r.user_id && (
-                        <button onClick={() => onDelete(r.id)} className="text-xs text-gray-400 hover:text-red-500">删除</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {replyTo?.id === r.id && (
-                  <InlineReplyForm
-                    target={replyTo}
-                    replyText={replyText}
-                    replyLoading={replyLoading}
-                    onReplyTextChange={onReplyTextChange}
-                    onSubmitReply={onSubmitReply}
-                    onCancel={() => onReply(null)}
-                  />
-                )}
-              </div>
-            );
-          })}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

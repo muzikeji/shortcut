@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { SettingsProvider, useSettings } from './SettingsContext';
+import { ToastProvider } from './ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -39,6 +40,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <SettingsProvider>
+          <ToastProvider>
           <SEOHead />
           <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
@@ -55,6 +57,7 @@ export default function App() {
             </main>
             <Footer />
           </div>
+          </ToastProvider>
         </SettingsProvider>
       </AuthProvider>
     </BrowserRouter>
