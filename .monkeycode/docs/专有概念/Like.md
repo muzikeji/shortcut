@@ -16,7 +16,7 @@
 | 方面 | 位置 |
 |------|------|
 | 数据库表 | `likes` 表 |
-| 后端路由 | `backend/src/routes/interact.js` (`POST /:shortcutId/like`) |
+| 后端路由 | `php-shortcut/src/routes/interact.php` (`POST /:id/like`) |
 | 前端调用 | `frontend/src/api.ts` (`api.toggleLike`) |
 
 ## 结构
@@ -33,7 +33,30 @@ interface Like {
 ### 不变量
 
 1. **每人每个快捷指令只能点赞一次**: `UNIQUE(shortcut_id, user_id)` 约束保证
-2. **计数一致性**: `shortcuts.like_count` 必须等于该快捷指令的 `SELECT COUNT(*) FROM likes`
+2. **计数一致性**: `shortcuts.like_count` 必须等于 `SELECT COUNT(*) FROM likes WHERE shortcut_id=?`
+
+## Toggle 流程
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as interact.php
+    participant DB
+
+    Client->>API: POST /api/shortcuts/:id/like
+    API->>DB: SELECT FROM likes WHERE user_id=? AND shortcut_id=?
+    alt 未点赞
+        DB-->>API: 空
+        API->>DB: INSERT INTO likes
+        API->>DB: UPDATE shortcuts SET like_count = like_count + 1
+        API-->>Client: {liked: true, like_count: N+1}
+    else 已点赞
+        DB-->>API: 存在
+        API->>DB: DELETE FROM likes
+        API->>DB: UPDATE shortcuts SET like_count = like_count - 1
+        API-->>Client: {liked: false, like_count: N-1}
+    end
+```
 
 ## 生命周期
 

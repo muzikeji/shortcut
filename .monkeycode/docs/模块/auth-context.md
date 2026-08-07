@@ -1,6 +1,6 @@
 # frontend/src/AuthContext.tsx
 
-前端认证状态管理模块，基于 React Context 提供全局认证能力。
+前端认证状态管理模块，基于 React Context 提供全局认证能力。同时 `ToastContext.tsx` 提供全局 Toast 通知能力。
 
 ## 导出的接口和 Hook
 
@@ -49,6 +49,21 @@ sequenceDiagram
     AuthProvider->>App: loading = false
 ```
 
+## Toast 通知
+
+`ToastContext.tsx` 提供全局通知能力，用于替代原生的 `alert()` 和 `confirm()`：
+
+```tsx
+const { toast, confirm } = useToast();
+
+// 普通提示（3 秒自动消失）
+toast('操作成功');
+
+// 确认弹窗（返回 Promise<boolean>）
+const yes = await confirm('确认删除？');
+if (yes) { /* 执行删除 */ }
+```
+
 ## 使用示例
 
 ```tsx
@@ -63,11 +78,27 @@ function MyComponent() {
 
   return (
     <div>
-      <p>欢迎, {user.username}</p>
+      <p>欢迎, {user.username}（{user.role}）</p>
       <button onClick={logout}>退出</button>
     </div>
   );
 }
+```
+
+## 角色判断模式
+
+前端通过 `user.role` 判断角色来控制 UI 可见性：
+
+```tsx
+const { user } = useAuth();
+const isOwner = user?.role === 'owner';
+const isAdmin = user?.role === 'admin' || isOwner;
+
+// 仅 owner 可见
+{isOwner && <button>站点设置</button>}
+
+// admin 和 owner 可见
+{isAdmin && <button>管理后台</button>}
 ```
 
 ## 依赖
@@ -79,3 +110,4 @@ function MyComponent() {
 **依赖本模块的**:
 - 所有页面组件 -- 通过 `useAuth()` 获取用户和认证方法
 - `Navbar.tsx` -- 显示用户信息和导航
+- 所有 admin/ 和 shortcut/ 子组件
