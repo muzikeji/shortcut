@@ -28,6 +28,7 @@ export default function Share() {
   const [publishedAt, setPublishedAt] = useState(formatNow());
   const [shortcutName, setShortcutName] = useState('');
   const [shortcutColor, setShortcutColor] = useState('');
+  const isValidUrl = (value: string) => ICLOUD_REGEX.test(value);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -75,8 +76,6 @@ export default function Share() {
     return null;
   }
 
-  const isValidUrl = (value: string) => ICLOUD_REGEX.test(value);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -87,6 +86,10 @@ export default function Share() {
     }
     if (!isValidUrl(url.trim())) {
       setError('请输入有效的 iCloud 快捷指令链接 (https://www.icloud.com/shortcuts/xxx)');
+      return;
+    }
+    if (!shortcutName) {
+      setError('正在获取快捷指令名称，请稍后再试');
       return;
     }
 

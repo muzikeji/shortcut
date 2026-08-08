@@ -37,7 +37,7 @@ export default function Admin() {
         ))}
       </div>
 
-      {tab === 'users' ? <UserManagement isOwner={isOwner} /> : tab === 'pending' ? <PendingReview /> : tab === 'shortcuts' ? <ShortcutManagement /> : tab === 'settings' && isOwner ? <SiteSettings /> : tab === 'update' && isOwner ? <UpdateSystem /> : <UserManagement isOwner={isOwner} />}
+      {tab === 'users' ? <UserManagement isOwner={isOwner} /> : tab === 'pending' ? <PendingReview /> : tab === 'shortcuts' ? <ShortcutManagement /> : tab === 'settings' && isOwner ? <SiteSettings /> : tab === 'update' && isOwner ? <UpdateSystem /> : null}
     </div>
   );
 }
